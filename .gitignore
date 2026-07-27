@@ -1,0 +1,26 @@
+# Python virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python cache/artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Local tool cache
+cache/
+
+# Local secrets/config
+.env
+.env.*
+
+# Generated Discord exports (keep scripts/source files only)
+discord-*.txt
+discord-*.json
+discord-*.md
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
