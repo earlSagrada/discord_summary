@@ -17,9 +17,9 @@ cache/
 .env.*
 
 # Generated Discord exports (keep scripts/source files only)
-discord-*.txt
+# discord-*.txt
 discord-*.json
-discord-*.md
+# discord-*.md
 
 # OS/editor noise
 .DS_Store

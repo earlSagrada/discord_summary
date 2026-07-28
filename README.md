@@ -89,6 +89,21 @@ python enrich_images.py discord-202607261830.txt
 python digest.py discord-202607261830.enriched.txt
 ```
 
+排查问题时建议开启调试日志：
+
+```bash
+python digest.py discord-202607261830.enriched.txt --debug
+```
+
+`digest.py` 现在支持以下能力：
+
+- `--debug`：把每次 API 调用的 `stop_reason`、输入/输出 token、内容块类型等写到
+  `.digest.debug.jsonl`，用于定位空输出、截断等问题。
+- `--debug-file <path>`：自定义调试日志文件路径。
+- `--max-tokens <n>`：调整单次调用的输出上限（默认 8000）。
+- 自动续写：如果某次返回 `stop_reason=max_tokens`，脚本会自动发起"继续"请求并拼接结果，
+  避免生成半截日报。
+
 得到 `.digest.md`，包含：一句话概览、拆开的话题线索（每条列出参与者、
 正反论据、结论）、提到的标的表格、**黑话与术语注释**、以及哪些说法
 是断言但没给论据。
@@ -131,6 +146,19 @@ __digest.diagnose()
 
 **API 连不上**
 检查 `HTTPS_PROXY`。`requests` 和 `anthropic` SDK 都读这个环境变量。
+
+**日报看起来没写完（末尾半句话/半张表）**
+先用 `--debug` 重跑，查看 `.digest.debug.jsonl` 里是否出现
+`"stop_reason": "max_tokens"`。脚本会自动续写；如果仍连续触发上限，
+请提高 `--max-tokens`，或减少输入规模后再生成。
+
+---
+
+## 后续计划
+
+- 结构完整性检查（计划中）：生成后自动校验关键章节是否齐全（如"一句话概览"、
+  "话题线索"、"提到的具体标的与事件"、"黑话与术语注释"、"值得追问的地方"）。
+  若缺失章节，再自动补一次请求。这个功能后续再加。
 
 ---
 
