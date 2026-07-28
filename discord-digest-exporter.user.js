@@ -15,6 +15,7 @@
   // ─────────────────────────── 配置 ───────────────────────────
   const CFG = {
     hoursBack: 24,        // 往回抓多少小时
+    limitByHours: true,   // true = 导出时按 hoursBack 过滤；false = 导出全部已采集消息
     autoScroll: false,    // false = 被动模式（你自己滚，脚本只记录）；true = 脚本自动滚
     scrollRatio: 0.75,    // 每次向上滚动视口高度的比例
     scrollDelayMs: 800,   // 每次滚动后等待渲染 / 加载的时间
@@ -197,7 +198,7 @@
 
   // ────────────────────────── 输出格式化 ──────────────────────────
 
-  function finalize() {
+  function finalize(limitByHours = CFG.limitByHours) {
     const rows = [...store.values()]
       .filter((r) => r.ts)
       .sort((a, b) => (a.ts < b.ts ? -1 : 1));
@@ -207,6 +208,7 @@
       if (r.author) last = r.author;
       else r.author = last || '(unknown)';
     }
+    if (!limitByHours) return rows;
     const cutoff = new Date(Date.now() - CFG.hoursBack * 3600 * 1000).toISOString();
     return rows.filter((r) => r.ts >= cutoff);
   }
@@ -249,7 +251,7 @@
   }
 
   function exportAll() {
-    const rows = finalize();
+    const rows = finalize(CFG.limitByHours);
     if (!rows.length) return alert('还没采集到消息。');
     const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '');
     const { text, imgs } = toCompactText(rows);
@@ -285,6 +287,9 @@
       'box-shadow:0 4px 16px rgba(0,0,0,.4);min-width:180px';
     panel.innerHTML =
       '<div id="dg-count" style="margin-bottom:8px">已采集 0 条</div>' +
+      '<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;cursor:pointer">' +
+      '<input id="dg-limit" type="checkbox" checked style="margin:0" />' +
+      '<span>仅导出最近 hoursBack</span></label>' +
       '<button id="dg-scroll" style="width:100%;margin-bottom:6px">自动向上滚动采集</button>' +
       '<button id="dg-export" style="width:100%;margin-bottom:6px">导出</button>' +
       '<button id="dg-reset" style="width:100%">清空</button>';
@@ -296,6 +301,10 @@
     panel.querySelector('#dg-scroll').onclick = autoScrollCollect;
     panel.querySelector('#dg-export').onclick = exportAll;
     panel.querySelector('#dg-reset').onclick = () => { store.clear(); updatePanel(); };
+    panel.querySelector('#dg-limit').checked = !!CFG.limitByHours;
+    panel.querySelector('#dg-limit').onchange = (e) => {
+      CFG.limitByHours = !!e.target.checked;
+    };
   }
 
   function updatePanel() {

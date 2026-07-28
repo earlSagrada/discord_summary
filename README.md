@@ -36,6 +36,7 @@ discord-YYYYMMDDHHMM.digest.md    日报
 | 项 | 默认 | 说明 |
 |---|---|---|
 | `hoursBack` | 24 | 往回抓多少小时 |
+| `limitByHours` | `true` | 导出时是否按 `hoursBack` 过滤；设为 `false` 导出全部已采集消息 |
 | `autoScroll` | `false` | `false` = 被动模式，你自己滚，脚本只记录 |
 | `scrollDelayMs` | 800 | 自动模式下每次滚动的等待时间，网慢就调大 |
 
@@ -69,6 +70,9 @@ export HTTPS_PROXY=http://127.0.0.1:7890
 **第一步：导出。** 打开 `#tradingroom`，右下角出现小面板。往上滚到你想要的
 起点（比如昨天这个时候），再滚回底部，面板计数会一路涨。点"导出"，浏览器会
 下载三个文件。
+
+如果你想导出"全部已抓取内容"（不按时间裁剪），把面板里的
+"仅导出最近 hoursBack" 取消勾选再点"导出"。
 
 被动模式下滚动要慢一点——滚太快 Discord 来不及渲染，中间的消息会漏。
 按住 `PageUp` 大概是合适的速度。
