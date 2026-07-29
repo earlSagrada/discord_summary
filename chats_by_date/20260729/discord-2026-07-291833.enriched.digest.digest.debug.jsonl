@@ -1,0 +1,3 @@
+{"event": "run_start", "input": "chats_by_date\\20260729\\discord-2026-07-291833.enriched.txt", "output": "chats_by_date\\20260729\\discord-2026-07-291833.enriched.digest.md", "model": "claude-sonnet-5", "max_tokens": 8000}
+{"event": "api_response", "tag": "single", "attempt": 0, "stop_reason": "max_tokens", "input_tokens": 89575, "output_tokens": 8000, "content_types": ["thinking", "text"], "extracted_chars": 287}
+{"event": "api_response", "tag": "single", "attempt": 1, "stop_reason": "end_turn", "input_tokens": 89899, "output_tokens": 7863, "content_types": ["thinking", "text"], "extracted_chars": 8284}
