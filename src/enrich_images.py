@@ -28,6 +28,8 @@ from urllib.parse import urlparse
 import requests
 from PIL import Image
 
+import config
+
 # ───────────────────────────── 配置 ─────────────────────────────
 
 MANIFEST_HEADER = "===== 图片清单 ====="
@@ -184,7 +186,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("input", type=Path, help="脚本导出的 .txt")
     ap.add_argument("-o", "--output", type=Path, default=None)
-    ap.add_argument("--cache", type=Path, default=Path("cache"))
+    ap.add_argument("--cache", type=Path, default=config.CACHE_DIR)
     ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument("--no-api", action="store_true", help="只下载和缓存，不调用 API")
     args = ap.parse_args()

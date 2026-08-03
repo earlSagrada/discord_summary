@@ -15,6 +15,8 @@ import os
 import sys
 from pathlib import Path
 
+import config
+
 DEFAULT_MODEL = "claude-sonnet-5"
 CHUNK_CHARS = 120_000   # 单块字符上限，中文约等于 token 数量级
 MAX_TOKENS = 8000

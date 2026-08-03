@@ -14,14 +14,17 @@
 
   // ─────────────────────────── 配置 ───────────────────────────
   const CFG = {
-    hoursBack: 24,        // 往回抓多少小时
+    hoursBack: 1,         // 往回抓多少小时（自动导出用 1h 小窗口，减少重叠；首次回填可临时改大）
     limitByHours: true,   // true = 导出时按 hoursBack 过滤；false = 导出全部已采集消息
-    autoScroll: false,    // false = 被动模式（你自己滚，脚本只记录）；true = 脚本自动滚
-    scrollRatio: 0.75,    // 每次向上滚动视口高度的比例
-    scrollDelayMs: 800,   // 每次滚动后等待渲染 / 加载的时间
+    autoScroll: false,    // false = 被动模式（你自己滾，脚本只记录）；true = 脚本自动滾
+    autoExportMin: 15,    // 自动导出间隔（分钟）；面板上点“自动导出”开启后每隔这么久 exportAll() 一次
+    scrollRatio: 0.75,    // 每次向上滾动视口高度的比例
+    scrollDelayMs: 800,   // 每次滾动后等待渲染 / 加载的时间
     stagnantLimit: 6,     // 连续多少轮没有新消息就停
     stripImageResize: true, // 去掉 media.discordapp.net 的 width/height 参数以拿原图
   };
+
+  let autoTimer = null;   // 自动导出的 setInterval 句柄
 
   const store = new Map(); // messageId -> record
 
@@ -250,14 +253,35 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }
 
-  function exportAll() {
+  function exportAll(opts) {
+    const silent = opts && opts.silent;
     const rows = finalize(CFG.limitByHours);
-    if (!rows.length) return alert('还没采集到消息。');
+    if (!rows.length) {
+      if (silent) { console.log('[digest] 自动导出：尚无消息，跳过。'); return; }
+      return alert('还没采集到消息。');
+    }
     const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '');
     const { text, imgs } = toCompactText(rows);
     download(`discord-${stamp}.json`, JSON.stringify(rows, null, 2), 'application/json');
     download(`discord-${stamp}.txt`, text);
     if (imgs.length) download(`discord-${stamp}-images.txt`, imgs.join('\n'));
+    if (silent) console.log(`[digest] 自动导出 @ ${stamp}，${rows.length} 条。`);
+  }
+
+  // 自动导出：把浏览器标页开着，每 CFG.autoExportMin 分钟自动下载一次（需允许“自动下载多个文件”）
+  function toggleAuto(force) {
+    const on = typeof force === 'boolean' ? force : !autoTimer;
+    if (on && !autoTimer) {
+      autoTimer = setInterval(() => exportAll({ silent: true }), CFG.autoExportMin * 60 * 1000);
+      console.log(`[digest] 自动导出已开启，每 ${CFG.autoExportMin} 分钟一次。`);
+    } else if (!on && autoTimer) {
+      clearInterval(autoTimer);
+      autoTimer = null;
+      console.log('[digest] 自动导出已关闭。');
+    }
+    const btn = panel && panel.querySelector('#dg-auto');
+    if (btn) btn.textContent = autoTimer ? `③ 定时导出：开（每${CFG.autoExportMin}分钟）` : '③ 定时导出：关';
+    return !!autoTimer;
   }
 
   // ────────────────────────── 自检 ──────────────────────────
@@ -286,20 +310,32 @@
       'font:12px/1.5 system-ui;padding:10px 12px;border-radius:8px;border:1px solid #3f4147;' +
       'box-shadow:0 4px 16px rgba(0,0,0,.4);min-width:180px';
     panel.innerHTML =
-      '<div id="dg-count" style="margin-bottom:8px">已采集 0 条</div>' +
-      '<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;cursor:pointer">' +
+      '<div style="font-weight:600;margin-bottom:6px">📥 聊天导出器</div>' +
+      '<div id="dg-count" style="margin-bottom:8px">已采集 0 条消息</div>' +
+      '<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;cursor:pointer" ' +
+      'title="勾选=只导出最近这段时间的消息；取消=导出所有已采集的消息">' +
       '<input id="dg-limit" type="checkbox" checked style="margin:0" />' +
-      '<span>仅导出最近 hoursBack</span></label>' +
-      '<button id="dg-scroll" style="width:100%;margin-bottom:6px">自动向上滚动采集</button>' +
-      '<button id="dg-export" style="width:100%;margin-bottom:6px">导出</button>' +
-      '<button id="dg-reset" style="width:100%">清空</button>';
+      `<span>仅导出最近 ${CFG.hoursBack} 小时</span></label>` +
+      '<button id="dg-scroll" style="width:100%;margin-bottom:6px" ' +
+      'title="脚本模拟往上滚动，把更早的历史消息也采集进来（被动模式下你也可以自己滚）">' +
+      '① 自动往上滚·补历史</button>' +
+      '<button id="dg-export" style="width:100%;margin-bottom:6px" ' +
+      'title="立刻把已采集的消息导出成 3 个文件（JSON / 精简文本 / 图片清单）到下载目录">' +
+      '② 立即导出（下载文件）</button>' +
+      '<button id="dg-auto" style="width:100%;margin-bottom:6px" ' +
+      'title="开启后每隔固定时间自动导出一次；标签页需保持打开，关掉就停">' +
+      '③ 定时导出：关</button>' +
+      '<button id="dg-reset" style="width:100%" ' +
+      'title="清空已采集的消息缓存并从 0 重新计数；不会删除已下载的文件">' +
+      '清空计数（重新采集）</button>';
     document.body.appendChild(panel);
     for (const b of panel.querySelectorAll('button')) {
       b.style.cssText = b.style.cssText +
         ';background:#4e5058;color:#fff;border:0;border-radius:4px;padding:5px;cursor:pointer';
     }
     panel.querySelector('#dg-scroll').onclick = autoScrollCollect;
-    panel.querySelector('#dg-export').onclick = exportAll;
+    panel.querySelector('#dg-export').onclick = () => exportAll();
+    panel.querySelector('#dg-auto').onclick = () => toggleAuto();
     panel.querySelector('#dg-reset').onclick = () => { store.clear(); updatePanel(); };
     panel.querySelector('#dg-limit').checked = !!CFG.limitByHours;
     panel.querySelector('#dg-limit').onchange = (e) => {
@@ -309,7 +345,7 @@
 
   function updatePanel() {
     const el = panel && panel.querySelector('#dg-count');
-    if (el) el.textContent = `已采集 ${store.size} 条`;
+    if (el) el.textContent = `已采集 ${store.size} 条消息`;
   }
 
   // ────────────────────────── 启动 ──────────────────────────
@@ -318,6 +354,6 @@
   startPassive();
   if (CFG.autoScroll) autoScrollCollect();
 
-  window.__digest = { store, harvest, exportAll, diagnose, finalize, CFG };
-  console.log('[digest] 已就绪。被动模式：自己往上滚，脚本会记录。window.__digest 可手动调用。');
+  window.__digest = { store, harvest, exportAll, toggleAuto, diagnose, finalize, CFG };
+  console.log('[digest] 已就绪。被动模式：自己往上滾，脚本会记录。window.__digest 可手动调用（例：__digest.toggleAuto(true) 开启每 15min 自动导出）。');
 })();

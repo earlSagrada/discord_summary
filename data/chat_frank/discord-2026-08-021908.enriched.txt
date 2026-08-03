@@ -1,0 +1,842 @@
+[
+  {
+    "id": "1529123824228892764",
+    "ts": "2026-07-21T13:52:09.443Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "如果你不敢做空苹果，走也行",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529128697423200440",
+    "ts": "2026-07-21T14:11:31.303Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "buy mxl",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529135797389758587",
+    "ts": "2026-07-21T14:39:44.067Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "关了一半soxl",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529135825521213543",
+    "ts": "2026-07-21T14:39:50.774Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "爆赚！",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529135913739747328",
+    "ts": "2026-07-21T14:40:11.807Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "说了接股是福报",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529216141325500607",
+    "ts": "2026-07-21T19:58:59.554Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "unh trim again 55%",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529216211206934791",
+    "ts": "2026-07-21T19:59:16.215Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "还剩一半",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529489206164852756",
+    "ts": "2026-07-22T14:04:03.285Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "买回meta",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529506362558517299",
+    "ts": "2026-07-22T15:12:13.688Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "买回meta",
+    "reply": {
+      "author": "CRDO价值投资者Frank",
+      "text": "买回meta"
+    },
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529506371232469243",
+    "ts": "2026-07-22T15:12:15.756Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "没意思",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529512806783651941",
+    "ts": "2026-07-22T15:37:50.111Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "不想赌财报的可以把半导体全走了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529512838215762012",
+    "ts": "2026-07-22T15:37:57.605Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "这个财报想beat的难度不低",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529512896378441939",
+    "ts": "2026-07-22T15:38:11.472Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "我们各种接的soxl已经爆赚了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529512923922432042",
+    "ts": "2026-07-22T15:38:18.039Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "不是非得赌一下的",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529612208567357602",
+    "ts": "2026-07-22T22:12:49.343Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "准备一键清仓",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529843410758795416",
+    "ts": "2026-07-23T13:31:32.241Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "aapl put走了一半",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529853510567592189",
+    "ts": "2026-07-23T14:11:40.223Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "这个局已经没法做多了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529853528846368868",
+    "ts": "2026-07-23T14:11:44.581Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "先收手吧",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529853639924121600",
+    "ts": "2026-07-23T14:12:11.064Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "所有宏观的指标一致指向的就是下跌，很清晰的下跌",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1529853673306329099",
+    "ts": "2026-07-23T14:12:19.023Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "波动也很大，期货都很难打。。。",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1530212349917659156",
+    "ts": "2026-07-24T13:57:34.191Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "好，吸入mxl",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1530212477105606726",
+    "ts": "2026-07-24T13:58:04.515Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "自己控制仓位",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1530212494084411403",
+    "ts": "2026-07-24T13:58:08.563Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "跌出性价比了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1531265195312156762",
+    "ts": "2026-07-27T11:41:12.094Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "https://open.substack.com/pub/franktrading/p/07272026?r=2wn5pz&utm_campaign=post&utm_medium=web&showWelcomeOnShare=true",
+    "reply": null,
+    "media": [
+      "https://substackcdn.com/image/fetch/$s_!hTsq!,f_auto,q_auto:best,fl_progressive:steep/https%3A%2F%2Ffranktrading.substack.com%2Fapi%2Fv1%2Fpost_preview%2F208638338%2Ftwitter.jpg%3Fversion%3D4"
+    ],
+    "embeds": [
+      {
+        "author": "",
+        "title": "07/27/2026 复盘与展望",
+        "desc": "各位交易员早上好，让我们开始吧！",
+        "url": "https://open.substack.com/pub/franktrading/p/07272026?r=2wn5pz&utm_campaign=post&utm_medium=web&showWelcomeOnShare=true"
+      }
+    ]
+  },
+  {
+    "id": "1531265205127090249",
+    "ts": "2026-07-27T11:41:14.434Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "https://open.substack.com/pub/franktrading/p/07272026-trading-recap-and-outlook?r=2wn5pz&utm_campaign=post&utm_medium=web&showWelcomeOnShare=true",
+    "reply": null,
+    "media": [
+      "https://substackcdn.com/image/fetch/$s_!ERxX!,f_auto,q_auto:best,fl_progressive:steep/https%3A%2F%2Ffranktrading.substack.com%2Fapi%2Fv1%2Fpost_preview%2F208673037%2Ftwitter.jpg%3Fversion%3D4"
+    ],
+    "embeds": [
+      {
+        "author": "",
+        "title": "07/27/2026 Trading Recap and Outlook",
+        "desc": "Good morning, traders.",
+        "url": "https://open.substack.com/pub/franktrading/p/07272026-trading-recap-and-outlook?r=2wn5pz&utm_campaign=post&utm_medium=web&showWelcomeOnShare=true"
+      }
+    ]
+  },
+  {
+    "id": "1531300341880979608",
+    "ts": "2026-07-27T14:00:51.689Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "buy qqq call",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1531300508525006848",
+    "ts": "2026-07-27T14:01:31.420Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "685",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1531300626406051880",
+    "ts": "2026-07-27T14:01:59.525Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "破了就跑",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1531303423025217537",
+    "ts": "2026-07-27T14:13:06.291Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "run！",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1531305005796032543",
+    "ts": "2026-07-27T14:19:23.653Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "诶不对",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1531305053279879351",
+    "ts": "2026-07-27T14:19:34.974Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "spx在7430支撑住了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1531305092551020555",
+    "ts": "2026-07-27T14:19:44.337Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "我吸了一点大盘call",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1531305129989374114",
+    "ts": "2026-07-27T14:19:53.263Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "试一试",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1531306531306344469",
+    "ts": "2026-07-27T14:25:27.363Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "stop out",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1531306591452794940",
+    "ts": "2026-07-27T14:25:41.703Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "不许笑！",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1531308117319618620",
+    "ts": "2026-07-27T14:31:45.498Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "确实超出预期了这个跌的。。。",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1531308276325679135",
+    "ts": "2026-07-27T14:32:23.408Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "我现在没多头了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1531318420036128779",
+    "ts": "2026-07-27T15:12:41.857Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "https://www.theinformation.com/articles/china-starts-mass-producing-homegrown-duv-chipmaking-tools-advance-local-chip-industry",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1531318441603108914",
+    "ts": "2026-07-27T15:12:46.999Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "the information又来了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1531694293230686382",
+    "ts": "2026-07-28T16:06:17.010Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "今天可能是大底了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1531694327930032148",
+    "ts": "2026-07-28T16:06:25.283Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "我看到了巨量的sell put大军",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1531694404702830653",
+    "ts": "2026-07-28T16:06:43.587Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "",
+    "reply": null,
+    "media": [
+      "https://cdn.discordapp.com/attachments/1469820012859625524/1531694404262170734/image.png?ex=6a70bc93&is=6a6f6b13&hm=0aa649196cbeeaa0b6e4b923bdb9862c9a3055a5d6fbb4ec0ed162b69ff058d2",
+      "https://media.discordapp.net/attachments/1469820012859625524/1531694404262170734/image.png?ex=6a70bc93&is=6a6f6b13&hm=0aa649196cbeeaa0b6e4b923bdb9862c9a3055a5d6fbb4ec0ed162b69ff058d2&=&format=webp&quality=lossless"
+    ],
+    "embeds": []
+  },
+  {
+    "id": "1531694421547155456",
+    "ts": "2026-07-28T16:06:47.603Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "这一排全是英伟达的sell put",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1531694502115541104",
+    "ts": "2026-07-28T16:07:06.812Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "还是不要着急，明天如果多头强，我们直接冲",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532087556081189004",
+    "ts": "2026-07-29T18:08:58.180Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "",
+    "reply": null,
+    "media": [
+      "https://cdn.discordapp.com/attachments/1469820012859625524/1532087555791655183/image.png?ex=6a70d93a&is=6a6f87ba&hm=78fc035d3c8ddbd9c6d23aaf2fc88aa246dd9de8f918f706222ab38fed42f7ee",
+      "https://media.discordapp.net/attachments/1469820012859625524/1532087555791655183/image.png?ex=6a70d93a&is=6a6f87ba&hm=78fc035d3c8ddbd9c6d23aaf2fc88aa246dd9de8f918f706222ab38fed42f7ee&=&format=webp&quality=lossless"
+    ],
+    "embeds": []
+  },
+  {
+    "id": "1532087571436540035",
+    "ts": "2026-07-29T18:09:01.841Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "这个平了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532087586644824215",
+    "ts": "2026-07-29T18:09:05.467Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "赚麻了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532087616952995981",
+    "ts": "2026-07-29T18:09:12.693Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "我不知道为什么ub在狂跌。。。。",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532109450721362040",
+    "ts": "2026-07-29T19:35:58.269Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "10y和30y的反应很差",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532109544677834812",
+    "ts": "2026-07-29T19:36:20.670Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "暂时反应是比较差的，耐心等待，看看债是否有反转",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532109558430826657",
+    "ts": "2026-07-29T19:36:23.949Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "否则还是不能做多",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532381582344720464",
+    "ts": "2026-07-30T13:37:19.504Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "zt 止盈1/2",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532381603169308836",
+    "ts": "2026-07-30T13:37:24.469Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "nbis出货",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532381613034307616",
+    "ts": "2026-07-30T13:37:26.821Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "180了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532382891882057839",
+    "ts": "2026-07-30T13:42:31.722Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "上去了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532382908960997446",
+    "ts": "2026-07-30T13:42:35.794Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "买了一半回来",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532388138335342753",
+    "ts": "2026-07-30T14:03:22.574Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "走了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532390248460451850",
+    "ts": "2026-07-30T14:11:45.667Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "买回来了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532390262494728263",
+    "ts": "2026-07-30T14:11:49.013Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "做了个小t",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532444680472756357",
+    "ts": "2026-07-30T17:48:03.270Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "刚加了orcl@125，ftnt@154.2",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532444773972054066",
+    "ts": "2026-07-30T17:48:25.562Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "orcl 125止损，ftnt153",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532444857090572448",
+    "ts": "2026-07-30T17:48:45.379Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "短线还可以去cbrs打野一下",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532444897762742292",
+    "ts": "2026-07-30T17:48:55.076Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "这个玩意过了200一般可以squeeze一下",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532742284628459824",
+    "ts": "2026-07-31T13:30:37.630Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "aapl put",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532742316492849152",
+    "ts": "2026-07-31T13:30:45.227Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "止盈了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532742662501699674",
+    "ts": "2026-07-31T13:32:07.722Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "goog call",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532747939863068672",
+    "ts": "2026-07-31T13:53:05.943Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "orcl 走了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532756675184824532",
+    "ts": "2026-07-31T14:27:48.606Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "现在全仓只有nebx+goog call",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532756682701275358",
+    "ts": "2026-07-31T14:27:50.398Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "都很舒服",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532759568998727860",
+    "ts": "2026-07-31T14:39:18.545Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "补了一点ftnt",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532761770110750840",
+    "ts": "2026-07-31T14:48:03.331Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "googl 350阻力",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532761781666185216",
+    "ts": "2026-07-31T14:48:06.086Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "先走一半",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532761873555001484",
+    "ts": "2026-07-31T14:48:27.994Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "up 40%",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532761962105274508",
+    "ts": "2026-07-31T14:48:49.106Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "突破继续追",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532762434383908935",
+    "ts": "2026-07-31T14:50:41.706Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "1",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532766084183359510",
+    "ts": "2026-07-31T15:05:11.886Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "赚晕了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532766099530318015",
+    "ts": "2026-07-31T15:05:15.545Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "自己注意止盈",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532766119541346525",
+    "ts": "2026-07-31T15:05:20.316Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "可以组个call spread",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532781530982777105",
+    "ts": "2026-07-31T16:06:34.690Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "nbis我先走了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532781540109586665",
+    "ts": "2026-07-31T16:06:36.866Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "没什么独立性",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532798907325878282",
+    "ts": "2026-07-31T17:15:37.533Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "赚麻啦ftnt",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532799081708130505",
+    "ts": "2026-07-31T17:16:19.109Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "trim一点点？",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532799105255080097",
+    "ts": "2026-07-31T17:16:24.723Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "都行，看你们自己",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532816896297140327",
+    "ts": "2026-07-31T18:27:06.438Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "goog call",
+    "reply": {
+      "author": "CRDO价值投资者Frank",
+      "text": "goog call"
+    },
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532816922679316512",
+    "ts": "2026-07-31T18:27:12.728Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "自己止盈一下吧",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532816959979393045",
+    "ts": "2026-07-31T18:27:21.621Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "自觉上供，谢谢大家",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532817012345274570",
+    "ts": "2026-07-31T18:27:34.106Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "我留了5%仓位的call (edited)Friday, 31 July 2026 at 20:27",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532817053516304525",
+    "ts": "2026-07-31T18:27:43.922Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "下周一再说",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532839591843860641",
+    "ts": "2026-07-31T19:57:17.478Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "ftnt up 50%",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  },
+  {
+    "id": "1532839614015082587",
+    "ts": "2026-07-31T19:57:22.764Z",
+    "author": "CRDO价值投资者Frank",
+    "text": "走大半了",
+    "reply": null,
+    "media": [],
+    "embeds": []
+  }
+]

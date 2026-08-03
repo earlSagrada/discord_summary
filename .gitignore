@@ -10,11 +10,18 @@ __pycache__/
 *.pyo
 
 # Local tool cache
-cache/
+data/cache/
+
+# yfinance 行情当日缓存（可随时删，会自动重拉）
+data/market_cache/
+
+# Local inbox (browser downloads land here, then get filed into data/chats_by_date/)
+data/inbox/
 
 # Local secrets/config
 .env
 .env.*
+!.env.example
 
 # Generated Discord exports (keep scripts/source files only)
 # discord-*.txt
