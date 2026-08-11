@@ -172,10 +172,11 @@ def days_in(records: list[dict]) -> set[str]:
 
 # ───────────────────────────── 频道解析 ─────────────────────────────
 
-# 多频道导出文件名：discord-<频道名>-<channelId>-<YYYYMMDDHHMM>.json
-# 旧单频道格式：       discord-<YYYYMMDDHHMM>.json（无频道标签）
-_TAGGED = re.compile(r"^discord-(?P<label>.+)-(?P<chid>\d{15,25})-(?P<stamp>\d{12})$")
-_UNTAGGED = re.compile(r"^discord-(?P<stamp>\d{12})$")
+# 多频道导出文件名：discord-<频道名>-<channelId>-<时间戳>.json
+#   时间戳来自 JS 的 toISOString().slice(0,16) 去掉 T/: → 形如 2026-08-111927（含日期横线）
+# 旧单频道格式：       discord-<时间戳>.json（无频道标签）
+_TAGGED = re.compile(r"^discord-(?P<label>.+?)-(?P<chid>\d{15,25})-(?P<stamp>[\dT:\-]+)$")
+_UNTAGGED = re.compile(r"^discord-(?P<stamp>[\dT:\-]+)$")
 _SAFE = re.compile(r"[^0-9A-Za-z\u4e00-\u9fff_-]+")
 
 
