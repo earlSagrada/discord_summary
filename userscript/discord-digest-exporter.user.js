@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Discord Channel Digest Exporter
 // @namespace    local.discord.digest
-// @version      0.1
+// @version      0.2
 // @description  从渲染后的 DOM 抓取当前频道的聊天记录，保留引用、图片和 embed，导出 JSON / 精简文本 / 图片 URL 清单
 // @match        https://discord.com/channels/*
 // @match        https://ptb.discord.com/channels/*
@@ -22,11 +22,34 @@
     scrollDelayMs: 800,   // 每次滾动后等待渲染 / 加载的时间
     stagnantLimit: 6,     // 连续多少轮没有新消息就停
     stripImageResize: true, // 去掉 media.discordapp.net 的 width/height 参数以拿原图
+    // 开启“定时导出”后，每次都会依次跳转到下面这些频道采集，然后各自导出一份，最后回到你原来的频道。
+    autoChannels: [
+      { name: 'tradingroom', guildId: '1459447243747889345', channelId: '1459466706132013170' },
+      { name: 'frank',       guildId: '1459447243747889345', channelId: '1469820012859625524' },
+    ],
+    navTimeoutMs: 15000,  // 切换频道后等待其加载的最长时间
+    navSettleMs: 1500,    // 频道切换到位后，额外等待消息渲染的时间
   };
 
   let autoTimer = null;   // 自动导出的 setInterval 句柄
+  let autoRunning = false; // 自动导出正在跑（避免重入）
 
-  const store = new Map(); // messageId -> record
+  // 每个频道独立一份 store：channelId -> Map(messageId -> record)
+  const stores = new Map();
+
+  function currentChannelId() {
+    const m = location.pathname.match(/\/channels\/[^/]+\/(\d+)/);
+    return m ? m[1] : null;
+  }
+
+  function storeFor(chId) {
+    const key = chId || '_unknown';
+    if (!stores.has(key)) stores.set(key, new Map());
+    return stores.get(key);
+  }
+
+  // 当前频道对应的 store
+  const currentStore = () => storeFor(currentChannelId());
 
   // ───────────────────────── DOM 工具 ─────────────────────────
 
@@ -147,6 +170,7 @@
   // ────────────────────────── 采集循环 ──────────────────────────
 
   function harvest() {
+    const store = currentStore();
     let added = 0;
     for (const li of messageNodes()) {
       const id = li.id.split('-').pop();
@@ -161,7 +185,7 @@
     return added;
   }
 
-  function oldestTs() {
+  function oldestTs(store = currentStore()) {
     let min = null;
     for (const r of store.values()) {
       if (!r.ts) continue;
@@ -189,19 +213,37 @@
     updatePanel();
   }
 
-  function startPassive() {
-    const list = document.querySelector('[data-list-id="chat-messages"]') || document.body;
-    const obs = new MutationObserver(() => {
+  let passiveObserver = null;
+  function attachObserver() {
+    if (passiveObserver) { passiveObserver.disconnect(); passiveObserver = null; }
+    const list = document.querySelector('[data-list-id="chat-messages"]');
+    if (!list) return;
+    passiveObserver = new MutationObserver(() => {
       harvest();
       updatePanel();
     });
-    obs.observe(list, { childList: true, subtree: true });
+    passiveObserver.observe(list, { childList: true, subtree: true });
+  }
+
+  function startPassive() {
+    attachObserver();
     setInterval(() => { harvest(); updatePanel(); }, 1500);
+    // Discord 是 SPA，切换频道不整页刷新；监测 URL 变化以切换 store 并重挂观察器
+    let lastCh = currentChannelId();
+    setInterval(() => {
+      const now = currentChannelId();
+      if (now !== lastCh) {
+        lastCh = now;
+        attachObserver();
+        harvest();
+        updatePanel();
+      }
+    }, 1000);
   }
 
   // ────────────────────────── 输出格式化 ──────────────────────────
 
-  function finalize(limitByHours = CFG.limitByHours) {
+  function finalize(limitByHours = CFG.limitByHours, store = currentStore()) {
     const rows = [...store.values()]
       .filter((r) => r.ts)
       .sort((a, b) => (a.ts < b.ts ? -1 : 1));
@@ -253,27 +295,98 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }
 
-  function exportAll(opts) {
+  // 导出指定频道（chId）已采集的消息；不传则导出当前频道
+  function exportChannel(chId, opts) {
     const silent = opts && opts.silent;
-    const rows = finalize(CFG.limitByHours);
+    const label = (opts && opts.label) || chId || 'unknown';
+    const store = storeFor(chId);
+    const rows = finalize(CFG.limitByHours, store);
     if (!rows.length) {
-      if (silent) { console.log('[digest] 自动导出：尚无消息，跳过。'); return; }
-      return alert('还没采集到消息。');
+      if (silent) { console.log(`[digest] 自动导出：${label} 尚无消息，跳过。`); return 0; }
+      alert(`频道 ${label} 还没采集到消息。`);
+      return 0;
     }
     const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '');
+    const tag = `${label}-${chId || 'unknown'}`;
     const { text, imgs } = toCompactText(rows);
-    download(`discord-${stamp}.json`, JSON.stringify(rows, null, 2), 'application/json');
-    download(`discord-${stamp}.txt`, text);
-    if (imgs.length) download(`discord-${stamp}-images.txt`, imgs.join('\n'));
-    if (silent) console.log(`[digest] 自动导出 @ ${stamp}，${rows.length} 条。`);
+    download(`discord-${tag}-${stamp}.json`, JSON.stringify(rows, null, 2), 'application/json');
+    download(`discord-${tag}-${stamp}.txt`, text);
+    if (imgs.length) download(`discord-${tag}-${stamp}-images.txt`, imgs.join('\n'));
+    if (silent) console.log(`[digest] 自动导出 ${label} @ ${stamp}，${rows.length} 条。`);
+    return rows.length;
   }
 
-  // 自动导出：把浏览器标页开着，每 CFG.autoExportMin 分钟自动下载一次（需允许“自动下载多个文件”）
+  // “② 立即导出”按钮：导出当前所在频道
+  function exportAll(opts) {
+    return exportChannel(currentChannelId(), { ...(opts || {}), label: '当前频道' });
+  }
+
+  // ──────────────────── 频道跳转 & 多频道自动导出 ────────────────────
+
+  // 在 Discord 内部做 SPA 跳转（不整页刷新，避免丢失内存里已采集的数据）
+  async function navigateToChannel(guildId, channelId) {
+    const target = `/channels/${guildId}/${channelId}`;
+    if (currentChannelId() !== channelId) {
+      // 优先点侧边栏里的真实链接；找不到则退回 history + popstate
+      const link = document.querySelector(`a[href="${target}"]`);
+      if (link) {
+        link.click();
+      } else {
+        history.pushState({}, '', target);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }
+    }
+    // 等到 URL 切到位且消息列表渲染出来
+    const start = Date.now();
+    while (Date.now() - start < CFG.navTimeoutMs) {
+      if (currentChannelId() === channelId && document.querySelector('[data-list-id="chat-messages"]')) {
+        attachObserver();
+        await sleep(CFG.navSettleMs);
+        return true;
+      }
+      await sleep(300);
+    }
+    return false;
+  }
+
+  // 依次跳到 CFG.autoChannels 的每个频道采集，再各自导出，最后回到原频道
+  async function autoExportRun(opts) {
+    const silent = opts && opts.silent;
+    if (autoRunning) { console.log('[digest] 上一次自动导出还没跑完，本次跳过。'); return; }
+    autoRunning = true;
+    const originPath = location.pathname; // 记住原来所在位置，跑完回去
+    const originMatch = originPath.match(/\/channels\/([^/]+)\/(\d+)/);
+    try {
+      for (const ch of CFG.autoChannels) {
+        const ok = await navigateToChannel(ch.guildId, ch.channelId);
+        if (!ok) { console.warn(`[digest] 无法切换到 ${ch.name}（${ch.channelId}），跳过。`); continue; }
+        // 到位后采集当前可见消息（多采几次，等惰性渲染）
+        harvest(); await sleep(600);
+        harvest(); await sleep(600);
+        harvest();
+        updatePanel();
+      }
+      // 回到原频道
+      if (originMatch) {
+        await navigateToChannel(originMatch[1], originMatch[2]);
+      }
+      // 各频道分别导出
+      for (const ch of CFG.autoChannels) {
+        exportChannel(ch.channelId, { silent, label: ch.name });
+      }
+    } finally {
+      autoRunning = false;
+      updatePanel();
+    }
+  }
+
+  // 定时导出：标签页保持打开，每 CFG.autoExportMin 分钟自动跑一次多频道采集+导出
   function toggleAuto(force) {
     const on = typeof force === 'boolean' ? force : !autoTimer;
     if (on && !autoTimer) {
-      autoTimer = setInterval(() => exportAll({ silent: true }), CFG.autoExportMin * 60 * 1000);
-      console.log(`[digest] 自动导出已开启，每 ${CFG.autoExportMin} 分钟一次。`);
+      autoTimer = setInterval(() => autoExportRun({ silent: true }), CFG.autoExportMin * 60 * 1000);
+      console.log(`[digest] 自动导出已开启，每 ${CFG.autoExportMin} 分钟一次；覆盖频道：${CFG.autoChannels.map((c) => c.name).join('、')}。`);
+      autoExportRun({ silent: true }); // 开启时先立刻跑一次
     } else if (!on && autoTimer) {
       clearInterval(autoTimer);
       autoTimer = null;
@@ -336,7 +449,7 @@
     panel.querySelector('#dg-scroll').onclick = autoScrollCollect;
     panel.querySelector('#dg-export').onclick = () => exportAll();
     panel.querySelector('#dg-auto').onclick = () => toggleAuto();
-    panel.querySelector('#dg-reset').onclick = () => { store.clear(); updatePanel(); };
+    panel.querySelector('#dg-reset').onclick = () => { currentStore().clear(); updatePanel(); };
     panel.querySelector('#dg-limit').checked = !!CFG.limitByHours;
     panel.querySelector('#dg-limit').onchange = (e) => {
       CFG.limitByHours = !!e.target.checked;
@@ -345,15 +458,43 @@
 
   function updatePanel() {
     const el = panel && panel.querySelector('#dg-count');
-    if (el) el.textContent = `已采集 ${store.size} 条消息`;
+    if (!el) return;
+    const chId = currentChannelId();
+    const total = [...stores.values()].reduce((n, s) => n + s.size, 0);
+    el.textContent = `本频道 ${currentStore().size} 条 · 合计 ${total} 条` + (chId ? `（ch ${chId}）` : '');
   }
 
   // ────────────────────────── 启动 ──────────────────────────
 
-  buildPanel();
-  startPassive();
-  if (CFG.autoScroll) autoScrollCollect();
+  // 等 Discord 的聊天列表容器挂载完毕后再初始化，避免在 React 启动阶段插入 DOM 导致白屏
+  function waitForDiscord(callback, maxWaitMs = 30000) {
+    const start = Date.now();
+    const timer = setInterval(() => {
+      const ready =
+        document.querySelector('[data-list-id="chat-messages"]') ||
+        document.querySelector('[class*="messagesWrapper"]') ||
+        document.querySelector('[class*="chat-"]');
+      if (ready) {
+        clearInterval(timer);
+        callback();
+      } else if (Date.now() - start > maxWaitMs) {
+        clearInterval(timer);
+        // 超时后降级直接启动，避免永远等不到
+        callback();
+      }
+    }, 500);
+  }
 
-  window.__digest = { store, harvest, exportAll, toggleAuto, diagnose, finalize, CFG };
-  console.log('[digest] 已就绪。被动模式：自己往上滾，脚本会记录。window.__digest 可手动调用（例：__digest.toggleAuto(true) 开启每 15min 自动导出）。');
+  window.__digest = {
+    stores, storeFor, currentStore, currentChannelId,
+    harvest, exportAll, exportChannel, autoExportRun, navigateToChannel,
+    toggleAuto, diagnose, finalize, CFG,
+  };
+
+  waitForDiscord(() => {
+    buildPanel();
+    startPassive();
+    if (CFG.autoScroll) autoScrollCollect();
+    console.log('[digest] 已就绪。被动模式：自己往上滾，脚本会记录。window.__digest 可手动调用（例：__digest.toggleAuto(true) 开启每 15min 自动导出）。');
+  });
 })();
