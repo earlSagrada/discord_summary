@@ -40,8 +40,12 @@ if (-not (Test-Path $Script)) { throw "找不到 cycle.py：$Script" }
 $Action = New-ScheduledTaskAction -Execute $Python `
     -Argument "`"$Script`" --once" -WorkingDirectory $RepoRoot
 
-# 从现在起，每 $Minutes 分钟一次，持续约 25 年（约等于永久）
-$Trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) `
+# 起始时刻对齐到下一个 $Minutes 整点边界（如每15分钟 → :00/:15/:30/:45），
+# 这样油猴脚本可以稳定地提前 1 分钟导出，两边不再漂移。
+$now = Get-Date
+$aligned = $now.Date.AddHours($now.Hour).AddMinutes([math]::Floor($now.Minute / $Minutes) * $Minutes)
+$Start = $aligned.AddMinutes($Minutes)   # 下一个边界
+$Trigger = New-ScheduledTaskTrigger -Once -At $Start `
     -RepetitionInterval (New-TimeSpan -Minutes $Minutes) `
     -RepetitionDuration (New-TimeSpan -Days 9000)
 
@@ -52,5 +56,5 @@ $Settings = New-ScheduledTaskSettingsSet `
 Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger `
     -Settings $Settings -Description "每 $Minutes 分钟：入库+脉搏简报+信号+推送到 Discord" -Force | Out-Null
 
-Write-Host "已注册计划任务 $TaskName：每 $Minutes 分钟跑一次 `"$Python`" `"$Script`" --once"
+Write-Host "已注册计划任务 $TaskName：每 $Minutes 分钟跑一次（起始 $($Start.ToString('HH:mm')) · 对齐整点边界）"
 Write-Host "查看：Get-ScheduledTask -TaskName $TaskName ；手动跑一次：Start-ScheduledTask -TaskName $TaskName"

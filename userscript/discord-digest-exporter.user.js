@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Discord Channel Digest Exporter
 // @namespace    local.discord.digest
-// @version      0.2
+// @version      0.3
 // @description  从渲染后的 DOM 抓取当前频道的聊天记录，保留引用、图片和 embed，导出 JSON / 精简文本 / 图片 URL 清单
 // @match        https://discord.com/channels/*
 // @match        https://ptb.discord.com/channels/*
@@ -17,7 +17,8 @@
     hoursBack: 1,         // 往回抓多少小时（自动导出用 1h 小窗口，减少重叠；首次回填可临时改大）
     limitByHours: true,   // true = 导出时按 hoursBack 过滤；false = 导出全部已采集消息
     autoScroll: false,    // false = 被动模式（你自己滾，脚本只记录）；true = 脚本自动滾
-    autoExportMin: 15,    // 自动导出间隔（分钟）；面板上点“自动导出”开启后每隔这么久 exportAll() 一次
+    autoExportMin: 15,    // 自动导出间隔（分钟）；开启“定时导出”后按时钟对齐每隔这么久跑一次
+    exportLeadSec: 60,    // 导出时刻提前于“计划任务时刻”多少秒（默认早 1 分钟，让文件先落地）
     scrollRatio: 0.75,    // 每次向上滾动视口高度的比例
     scrollDelayMs: 800,   // 每次滾动后等待渲染 / 加载的时间
     stagnantLimit: 6,     // 连续多少轮没有新消息就停
@@ -380,20 +381,43 @@
     }
   }
 
-  // 定时导出：标签页保持打开，每 CFG.autoExportMin 分钟自动跑一次多频道采集+导出
+  // 定时导出：标签页保持打开，按“时钟对齐”自动跑多频道采集+导出
+  // 导出时刻 = 每个 autoExportMin 整点边界（如 :00/:15/:30/:45）提前 exportLeadSec 秒，
+  // 这样文件在本地「计划任务」触发前就落地了。用 setTimeout 逐次重排，避免 setInterval 漂移。
+  function msUntilNextExport() {
+    const now = Date.now();
+    const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+    const base = dayStart.getTime();
+    const step = CFG.autoExportMin * 60 * 1000;
+    const lead = CFG.exportLeadSec * 1000;
+    let k = Math.ceil((now - base + lead) / step);
+    let target = base + k * step - lead;
+    while (target <= now + 500) { k += 1; target = base + k * step - lead; }
+    return target - now;
+  }
+
+  function scheduleNextExport() {
+    const ms = msUntilNextExport();
+    autoTimer = setTimeout(() => {
+      autoExportRun({ silent: true });
+      scheduleNextExport();
+    }, ms);
+    const at = new Date(Date.now() + ms);
+    console.log(`[digest] 下次自动导出：${at.toLocaleTimeString()}（计划任务前 ${CFG.exportLeadSec}s）`);
+  }
+
   function toggleAuto(force) {
     const on = typeof force === 'boolean' ? force : !autoTimer;
     if (on && !autoTimer) {
-      autoTimer = setInterval(() => autoExportRun({ silent: true }), CFG.autoExportMin * 60 * 1000);
-      console.log(`[digest] 自动导出已开启，每 ${CFG.autoExportMin} 分钟一次；覆盖频道：${CFG.autoChannels.map((c) => c.name).join('、')}。`);
-      autoExportRun({ silent: true }); // 开启时先立刻跑一次
+      scheduleNextExport();
+      console.log(`[digest] 自动导出已开启（时钟对齐，每 ${CFG.autoExportMin} 分钟）；覆盖频道：${CFG.autoChannels.map((c) => c.name).join('、')}。需要立刻导出可点「②立即导出」。`);
     } else if (!on && autoTimer) {
-      clearInterval(autoTimer);
+      clearTimeout(autoTimer);
       autoTimer = null;
       console.log('[digest] 自动导出已关闭。');
     }
     const btn = panel && panel.querySelector('#dg-auto');
-    if (btn) btn.textContent = autoTimer ? `③ 定时导出：开（每${CFG.autoExportMin}分钟）` : '③ 定时导出：关';
+    if (btn) btn.textContent = autoTimer ? `③ 定时导出：开（每${CFG.autoExportMin}分钟·对齐）` : '③ 定时导出：关';
     return !!autoTimer;
   }
 

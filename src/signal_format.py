@@ -99,8 +99,9 @@ def format_cards(cards: list[dict], now: datetime | None = None) -> str:
 
     if red:
         names = ", ".join(c["ticker"] for c in red)
+        word = "ticker has" if len(red) == 1 else "tickers have"
         out.append("")
-        out.append(f"🔴 {len(red)} tickers have no signal: {names}.")
+        out.append(f"🔴 {len(red)} {word} no signal now: {names}.")
     if no_data:
         names = ", ".join(c["ticker"] for c in no_data)
         out.append(f"No market data for: {names}.")

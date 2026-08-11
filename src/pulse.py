@@ -20,7 +20,7 @@ import config  # noqa: F401  (UTF-8 stdout + load .env)
 import prompts
 
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
-MAX_TOKENS = 1500
+MAX_TOKENS = 2500
 
 _DAY_HDR = re.compile(r"^=====\s*(\d{4}-\d{2}-\d{2})\s*=====")
 _TIME_LINE = re.compile(r"^(\d{2}):(\d{2})\s+\S")
@@ -93,18 +93,41 @@ def combine_recent(
     return _render(kept), len(kept)
 
 
+# ───────────────────────── VIP 发言人 ─────────────────────────
+
+def load_vips() -> list[str]:
+    """读 prompts/vip_speakers.txt（一行一个名字，# 注释、空行忽略）。"""
+    path = prompts.PROMPTS_DIR / "vip_speakers.txt"
+    if not path.exists():
+        return []
+    names = []
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if line and not line.startswith("#"):
+            names.append(line)
+    return names
+
+
 # ───────────────────────── AI 简报 ─────────────────────────
 
-def summarize(window_text: str, model: str = DEFAULT_MODEL, max_tokens: int = MAX_TOKENS) -> str:
+def summarize(
+    window_text: str,
+    model: str = DEFAULT_MODEL,
+    max_tokens: int = MAX_TOKENS,
+    vips: list[str] | None = None,
+) -> str:
     """把窗口文本交给 Claude 生成 STE 英语脉搏简报。空输入返回空串。"""
     if not window_text.strip():
         return ""
     if not os.environ.get("ANTHROPIC_API_KEY"):
         raise RuntimeError("需要设置 ANTHROPIC_API_KEY 才能生成简报")
 
+    vips = vips if vips is not None else load_vips()
+    vip_names = "\n".join(f"- {v}" for v in vips) if vips else "- (none set yet)"
+
     from anthropic import Anthropic
     client = Anthropic()
-    prompt = prompts.load("pulse_summary.md").format(content=window_text)
+    prompt = prompts.load("pulse_summary.md").format(content=window_text, vip_names=vip_names)
     resp = client.messages.create(
         model=model,
         max_tokens=max_tokens,

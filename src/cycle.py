@@ -30,6 +30,10 @@ def log(msg: str) -> None:
     print(f"{datetime.now().strftime('%H:%M:%S')}  {msg}", flush=True)
 
 
+# 窗口内消息数 ≤ 这个值时，简报里注明「群里没几条新消息」
+LOW_ACTIVITY_MAX = 8
+
+
 def today_str(now: datetime) -> str:
     return now.strftime("%Y%m%d")
 
@@ -73,12 +77,14 @@ def run_once(args) -> int:
         log("窗口内无新消息，跳过（不调 AI、不推送）")
         return 0
 
+    low_activity = 0 < n_msg <= LOW_ACTIVITY_MAX
+
     # 3) 脉搏简报（STE 英语）
     brief = pulse.summarize(window, model=args.model) if n_msg else ""
 
-    # 4) 信号：从当天全部讨论抽重点标的，重新打分
+    # 4) 信号：从当天全部讨论抽标的，重新打分（默认连个股一起，信号更多）
     full_text = "\n".join(texts)
-    syms, mentions, unknown = S.resolve_from_text(full_text, all_=args.all)
+    syms, mentions, unknown = S.resolve_from_text(full_text, all_=not args.focus_only)
     syms = syms[: args.limit]
     cards = []
     if syms:
@@ -94,6 +100,8 @@ def run_once(args) -> int:
     # 5) 组装消息
     stamp = anchor.strftime("%Y-%m-%d %H:%M UTC")
     header = f"🕒 **Trading pulse — {stamp}**"
+    if low_activity:
+        header += f"\n_Low activity: only {n_msg} new messages in the last {args.minutes} minutes._"
     body_parts = [header]
     if brief:
         body_parts.append(brief)
@@ -117,8 +125,9 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="15 分钟脉搏+信号推送编排器")
     ap.add_argument("--once", action="store_true", help="跑一轮就退出（挂计划任务用）")
     ap.add_argument("--minutes", type=int, default=45, help="脉搏窗口（分钟）")
-    ap.add_argument("--limit", type=int, default=12, help="最多打分多少个标的")
-    ap.add_argument("--all", action="store_true", help="连个股/期货一起打分")
+    ap.add_argument("--limit", type=int, default=20, help="最多打分多少个标的")
+    ap.add_argument("--focus-only", action="store_true",
+                    help="只打分重点 ETP/ETF（默认连个股一起，信号更多）")
     ap.add_argument("--event-today", action="store_true", help="大宏观事件当天：环境不clear")
     ap.add_argument("--model", default=pulse.DEFAULT_MODEL, help="脉搏简报用的模型")
     ap.add_argument("--dry-run", action="store_true", help="不推送、不入库，打印到屏幕")
