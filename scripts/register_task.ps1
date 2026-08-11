@@ -1,4 +1,4 @@
-<#
+﻿<#
 注册 Windows 计划任务：每 15 分钟跑一轮 cycle.py（入库→脉搏简报→信号→推送）。
 
 前提：
@@ -19,6 +19,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+# Ensure this script's own Chinese output renders on any console
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 
 # 仓库根 = 本脚本的上一级目录
 $RepoRoot = Split-Path -Parent $PSScriptRoot
