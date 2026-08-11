@@ -25,11 +25,13 @@
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
 import time
 from datetime import datetime
+from pathlib import Path
 
 import config
 
@@ -168,6 +170,25 @@ def days_in(records: list[dict]) -> set[str]:
     return {r["ts"][:10] for r in records if r.get("ts")}
 
 
+# ───────────────────────────── 频道解析 ─────────────────────────────
+
+# 多频道导出文件名：discord-<频道名>-<channelId>-<YYYYMMDDHHMM>.json
+# 旧单频道格式：       discord-<YYYYMMDDHHMM>.json（无频道标签）
+_TAGGED = re.compile(r"^discord-(?P<label>.+)-(?P<chid>\d{15,25})-(?P<stamp>\d{12})$")
+_UNTAGGED = re.compile(r"^discord-(?P<stamp>\d{12})$")
+_SAFE = re.compile(r"[^0-9A-Za-z\u4e00-\u9fff_-]+")
+
+
+def channel_of(json_path: Path) -> str:
+    """从导出文件名解析频道名。旧格式/解析不了统一归到 'misc'。"""
+    stem = json_path.stem
+    m = _TAGGED.match(stem)
+    if m:
+        label = m.group("label").strip() or "misc"
+        return _SAFE.sub("_", label) or "misc"
+    return "misc"
+
+
 # ───────────────────────────── 处理一个导出 ─────────────────────────────
 
 def process_export(json_path: Path) -> None:
@@ -180,8 +201,10 @@ def process_export(json_path: Path) -> None:
         log(f"跳过（{json_path.name} 无记录）")
         return
 
+    channel = channel_of(json_path)
+
     for day in sorted(days_in(records)):
-        folder = OUT_ROOT / day.replace("-", "")
+        folder = OUT_ROOT / day.replace("-", "") / channel
         folder.mkdir(parents=True, exist_ok=True)
         merged_json = folder / "merged.json"
         merged_txt = folder / "merged.txt"
@@ -199,14 +222,14 @@ def process_export(json_path: Path) -> None:
         day_records = [r for r in records if r.get("ts", "")[:10] == day]
         changed = merge_records(existing, day_records)
         if changed == 0 and merged_txt.exists():
-            log(f"{day}: 无新增，跳过 enrich")
+            log(f"{day}/{channel}: 无新增，跳过 enrich")
             continue
 
         ordered = sorted(existing.values(), key=lambda r: r.get("ts") or "")
         merged_json.write_text(json.dumps(ordered, ensure_ascii=False, indent=1),
                                encoding="utf-8")
         merged_txt.write_text(to_compact_text(ordered), encoding="utf-8")
-        log(f"{day}: 合并后 {len(ordered)} 条（本次 +{changed}），开始 enrich")
+        log(f"{day}/{channel}: 合并后 {len(ordered)} 条（本次 +{changed}），开始 enrich")
 
         rc = subprocess.run(
             [sys.executable, str(ENRICH), str(merged_txt),
@@ -214,9 +237,9 @@ def process_export(json_path: Path) -> None:
             cwd=str(ROOT),
         ).returncode
         if rc == 0:
-            log(f"{day}: enrich 完成 -> {merged_enriched.relative_to(ROOT)}")
+            log(f"{day}/{channel}: enrich 完成 -> {merged_enriched.relative_to(ROOT)}")
         else:
-            log(f"{day}: enrich 退出码 {rc}（图片转写可能不全，文本仍已更新）")
+            log(f"{day}/{channel}: enrich 退出码 {rc}（图片转写可能不全，文本仍已更新）")
 
 
 def archive(json_path: Path) -> None:

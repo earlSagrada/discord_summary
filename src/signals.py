@@ -118,6 +118,19 @@ def build_card(ticker: str, sym: str, lv: dict, sigs: list[dict], env_clear: boo
         "tier": tier,
         "light": light,
         "signals": [f"{s['name']}[{s['tier']}] {s['note']}" for s in sigs],
+        # 结构化原始信号 + 关键位数值，供 STE 渲染 / 下游消费（不影响原有打印）
+        "sig_objs": [dict(s) for s in sigs],
+        "metrics": {
+            "high_20": lv.get("high_20"),
+            "low_20": lv.get("low_20"),
+            "vol_ratio": lv.get("vol_ratio"),
+            "ema9": lv.get("ema9"),
+            "ema21": lv.get("ema21"),
+            "sma50": lv.get("sma50"),
+            "vwap": lv.get("vwap"),
+            "chg_pct": lv.get("chg_pct"),
+        },
+        "env_clear": env_clear,
         "entry": entry,
         "stop": stop,
         "checklist": checklist,
@@ -157,6 +170,71 @@ def resolve_symbol(raw: str) -> str:
     return raw.upper()
 
 
+def resolve_from_text(text: str, all_: bool = False) -> tuple[list[str], list[dict], dict]:
+    """从聊天文本抽标的 -> (syms, mentions, unknown)。all_=False 只留重点 ETP/ETF。"""
+    mentions, unknown = extract.extract_mentions(text)
+    pool = mentions if all_ else [m for m in mentions if m["focus"]]
+    syms = [m["ticker"] for m in pool]
+    return syms, mentions, unknown
+
+
+# ────────────────────────── 打分（可复用） ──────────────────────────
+
+def score_symbol(sym: str, event_today: bool = False) -> dict | None:
+    """给单个标的拉数据、算位、打分，返回信号卡；拿不到行情返回 None。"""
+    daily = market.get_daily(sym)
+    if daily is None or daily.empty:
+        return None
+    intraday = market.get_intraday(sym)
+    lv = L.compute_levels(daily, intraday)
+
+    meta = T.UNIVERSE.get(sym, {})
+    earnings = market.get_last_earnings(sym) if meta.get("type") == "stock" else None
+    env_clear = not event_today
+    if meta.get("type") == "stock" and market.upcoming_earnings_within(sym, 2):
+        env_clear = False
+
+    sigs = detect(lv, earnings)
+    hd = detect_holddown(daily, meta.get("lev", 1))
+    if hd:
+        sigs.append(hd)
+    return build_card(sym, sym, lv, sigs, env_clear)
+
+
+def analyze(
+    syms: list[str],
+    *,
+    event_today: bool = False,
+    save: bool = True,
+    source_label: str = "",
+    mentions: list[dict] | None = None,
+) -> tuple[list[dict], int | None]:
+    """给一组标的打分，返回 (cards, run_id)。cards 里拿不到行情的标 no_data。
+
+    cycle.py / signals CLI 共用这一条。save=True 时同时写入 signals.db。
+    """
+    mentions = mentions or []
+    conn = store.connect() if save else None
+    run_id = store.new_run(conn, source_label) if conn else None
+    if conn:
+        for m in mentions:
+            store.add_mention(conn, run_id, m)
+
+    cards: list[dict] = []
+    for sym in syms:
+        card = score_symbol(sym, event_today)
+        if card is None:
+            cards.append({"ticker": sym, "no_data": True})
+            continue
+        cards.append(card)
+        if conn:
+            store.add_signal(conn, run_id, card)
+
+    if conn:
+        conn.close()
+    return cards, run_id
+
+
 # ────────────────────────── main ──────────────────────────
 
 def main() -> None:
@@ -175,9 +253,7 @@ def main() -> None:
         source_label = "watchlist:" + args.watchlist
     elif args.source:
         text = args.source.read_text(encoding="utf-8")
-        mentions, unknown = extract.extract_mentions(text)
-        pool = mentions if args.all else [m for m in mentions if m["focus"]]
-        syms = [m["ticker"] for m in pool]
+        syms, mentions, unknown = resolve_from_text(text, args.all)
         source_label = str(args.source)
     else:
         ap.error("需要提供 merged.enriched.txt 或 --watchlist")
@@ -195,38 +271,20 @@ def main() -> None:
         print("没有可打分的标的。")
         return
 
-    conn = None if args.no_save else store.connect()
-    run_id = store.new_run(conn, source_label) if conn else None
-    if conn:
-        for m in mentions:
-            store.add_mention(conn, run_id, m)
+    cards, run_id = analyze(
+        syms,
+        event_today=args.event_today,
+        save=not args.no_save,
+        source_label=source_label,
+        mentions=mentions,
+    )
+    for card in cards:
+        if card.get("no_data"):
+            print(f"\n── {card['ticker']} ──  ⚠️ 拿不到行情，跳过")
+        else:
+            print_card(card)
 
-    for sym in syms:
-        daily = market.get_daily(sym)
-        if daily is None or daily.empty:
-            print(f"\n── {sym} ──  ⚠️ 拿不到行情，跳过")
-            continue
-        intraday = market.get_intraday(sym)
-        lv = L.compute_levels(daily, intraday)
-
-        meta = T.UNIVERSE.get(sym, {})
-        earnings = market.get_last_earnings(sym) if meta.get("type") == "stock" else None
-        env_clear = not args.event_today
-        if meta.get("type") == "stock" and market.upcoming_earnings_within(sym, 2):
-            env_clear = False
-
-        sigs = detect(lv, earnings)
-        hd = detect_holddown(daily, meta.get("lev", 1))
-        if hd:
-            sigs.append(hd)
-
-        card = build_card(sym, sym, lv, sigs, env_clear)
-        print_card(card)
-        if conn:
-            store.add_signal(conn, run_id, card)
-
-    if conn:
-        conn.close()
+    if run_id is not None:
         print(f"\n已写入 {store.DB_PATH}（run #{run_id}）")
 
 

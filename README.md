@@ -25,27 +25,37 @@ discord-YYYYMMDDHHMM.digest.md    日报
 ```
 src/          Python 管线
   config.py       集中路径 + .env 加载（所有脚本 import 它）
+  prompts.py      读取 prompts/ 里的 prompt 文件（一个用途一份）
   enrich_images.py / digest.py / watch_inbox.py   聊天入库与日报
+  pulse.py        脉搏简报：切最近 N 分钟窗口 → Claude → STE 英语简报
+  discord_post.py 把消息 POST 到 Discord 频道 Webhook（自动分片）
+  signal_format.py 信号卡 → ASD-STE100 简化技术英语（静态模板）
+  cycle.py        编排器：入库→脉搏简报→信号→推送（挂计划任务每 15min）
   tickers.py      标的宇宙 + 黑话/别名词典（ETP/ETF 为重点）
   extract.py      从聊天文本抽 ticker（正则 + 词典）
   market.py       yfinance 行情 / Finnhub 财报（带每日缓存）
   levels.py       关键位计算（前高低 / 均线 / VWAP / 量比）
   store.py        SQLite 落库（signals.db）
-  signals.py      信号打分主程序 → 打印信号卡 + 存库
-userscript/   discord-digest-exporter.user.js（浏览器里跑）
+  signals.py      信号打分（analyze() 可被 cycle 复用）→ 信号卡 + 存库
+prompts/      喂给 AI 的 prompt（一个用途一份，改措辞不用动代码）
+  pulse_summary.md  脉搏简报（STE 英语）
+  digest_system.md / digest_user.md / digest_merge.md  日报 prompt
+userscript/   discord-digest-exporter.user.js（浏览器里跑，支持多频道轮流采集）
 data/         运行时数据（inbox/ cache/ market_cache/ signals.db 不入库）
   inbox/        浏览器下载落地处，watcher 处理后归档到 processed/
   cache/        图片哈希缓存
-  chats_by_date/  按日整理的记录（watcher 产出 merged.enriched.txt）
+  chats_by_date/  按日 + 按频道整理：<日>/<频道>/merged.enriched.txt
   chat_frank/     Frank 频道导出
   market_cache/   yfinance 行情当日缓存（可随时删，会自动重拉）
   signals.db      信号台账（SQLite，永久留存，见「信号打分」）
+scripts/      register_task.ps1（一键注册 Windows 计划任务）
 trade_notes/  分析与工具设计文档（含 MVP-v0-实施记录.md，讲自动化+数据源）
-.env          你的 API key（已 gitignore；从 .env.example 复制）
+.env          你的 API key + Webhook（已 gitignore；从 .env.example 复制）
 ```
 
 > 每 15 分钟自动导出 + 本地自动入库的完整流程见
 > [trade_notes/MVP-v0-实施记录.md](trade_notes/MVP-v0-实施记录.md)。
+> 每 15 分钟**自动推送简报+信号到你自己的 Discord 频道**见下面「自动推送」一节。
 
 ---
 
@@ -164,6 +174,64 @@ python src/digest.py discord-202607261830.enriched.txt --debug
 得到 `.digest.md`，包含：一句话概览、拆开的话题线索（每条列出参与者、
 正反论据、结论）、提到的标的表格、**黑话与术语注释**、以及哪些说法
 是断言但没给论据。
+
+---
+
+## 自动推送（每 15 分钟：脉搏简报 + 最新信号 → 你自己的频道）
+
+`cycle.py` 把整条链路串起来，每 15 分钟自动做一轮：
+
+```
+油猴脚本（标签页开着）──每15min──▶ data/inbox/discord-<频道>-<id>-<时间>.json
+        │
+        ▼  cycle.py --once（Windows 计划任务每15min触发）
+  1. watch_inbox：去重合并 + enrich，按频道落到 chats_by_date/<日>/<频道>/
+  2. 切最近 N 分钟窗口（两个频道合并）——窗口内没新消息就跳过，不烧钱不刷屏
+  3. Claude(haiku) 生成脉搏简报（ASD-STE100 简化技术英语）
+  4. 从当天讨论抽重点标的，重新打分，得到最新信号卡（STE 英语）
+  5. 简报 + 信号卡拼成一条，POST 到 DISCORD_WEBHOOK_URL 指向的频道
+```
+
+推送内容整条用 **ASD-STE100 简化技术英语**（短句、常用词、现在时；股票代码/人名保持原样）。
+简报走 Claude；信号解释是本地**静态 STE 模板**（免费、确定性）。
+
+### 一次性准备
+
+1. **建 Webhook**：进你自己的频道 → 频道设置 → 整合(Integrations) → Webhook → 新 Webhook → 复制 URL。
+2. **填 .env**：把 URL 写进 `.env` 的 `DISCORD_WEBHOOK_URL=...`（`.env` 已 gitignore，别贴到公开场合）。
+3. **注册计划任务**（每 15 分钟自动跑）：
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts\register_task.ps1
+   # 卸载： ... register_task.ps1 -Remove
+   ```
+
+   任务名 `DiscordDigestCycle`，`Start-ScheduledTask -TaskName DiscordDigestCycle` 可手动跑一次。
+
+> 前提同「每天的操作」：那个 Discord 标签页要保持打开、油猴脚本开着「定时导出」，
+> 负责把文件下到 `data/inbox/`。cycle 只管消费 inbox。
+
+### 手动 / 自测
+
+```powershell
+# 生产：跑一轮（入库→简报→信号→推送）
+.\.venv\Scripts\python.exe src\cycle.py --once
+
+# 自测：不推送、不入库、锚到最后一条消息，只打印将要发送的内容
+.\.venv\Scripts\python.exe src\cycle.py --once --dry-run --no-watch --anchor last --date 20260803
+
+# 只看脉搏简报喂进去的窗口（不调 AI）
+.\.venv\Scripts\python.exe src\pulse.py data\chats_by_date\20260803\frank\merged.enriched.txt --minutes 45 --anchor last --no-api
+
+# 单独测 Webhook 通不通
+.\.venv\Scripts\python.exe src\discord_post.py "test from cycle"
+```
+
+常用参数：`--minutes N`（窗口大小，默认 45）、`--limit N`（最多打分几个标的）、
+`--event-today`（大宏观事件当天压绿灯）、`--always`（窗口空也照发）、`--no-save`（不写 signals.db）。
+
+> 改推送措辞：脉搏简报的 prompt 在 [prompts/pulse_summary.md](prompts/pulse_summary.md)；
+> 信号的 STE 模板在 [src/signal_format.py](src/signal_format.py)。
 
 ---
 

@@ -204,4 +204,44 @@ Discord 标签页(开着) ──粘贴JS+开自动导出──▶ 每15min 下�
 
 ---
 
+## Part D · 每 15 分钟自动推送（脉搏简报 + 信号 → 自己的频道）—— 2026-08-11
+
+**目标**：把"读懂群在聊什么"和"最新信号"每 15 分钟自动送到用户自己的 Discord 频道，
+全程免手动。语言用 **ASD-STE100 简化技术英语**（整条推送都是英文，代码/人名保留原样）。
+
+**几个已定决策**
+- 推送方式：**Discord Webhook**（`.env` 里 `DISCORD_WEBHOOK_URL`）。CSP 不挡出站 webhook，最稳。
+- 简报窗口：**滚动最近 45 分钟**（可调），不是当天全量 → 便宜、不重复。
+- 频道范围：tradingroom + frank **合并成一段**统一简报。
+- 触发：**Windows 计划任务**每 15min 跑 `cycle.py --once`（`scripts/register_task.ps1` 一键注册）。
+- 省钱护栏：窗口内**无新消息就整轮跳过**（不调 AI、不推送）。
+- 信号解释：本地**静态 STE 模板**（`signal_format.py`），只有脉搏简报走 Claude(haiku)。
+
+**这轮新增/改动的模块**
+
+| 文件 | 职责 |
+|---|---|
+| `prompts/`（新目录） | 喂给 AI 的 prompt 一个用途一份；`pulse_summary.md` 是 STE 脉搏简报；digest 的 system/user/merge 也外置过来 |
+| `src/prompts.py` | 读 prompts/ 的小加载器（带缓存） |
+| `src/pulse.py` | 从 enriched 文本按 UTC 时间切"最近 N 分钟"窗口（多频道合并）→ Claude(haiku) 出 STE 简报；窗口空返回空串 |
+| `src/discord_post.py` | 把文本 POST 到 Webhook，>1900 字自动按行分片，429 限流重试 |
+| `src/signal_format.py` | 信号卡 → STE 英语（🟢🟡 详列入场/止损，🔴 只统计一句） |
+| `src/cycle.py` | 编排器 `--once`：watcher → 切窗口 → 简报 → `signals.analyze()` → 拼装 → 推送；`--dry-run/--no-watch/--anchor last` 便于离线自测 |
+| `src/signals.py` | 抽出可复用的 `resolve_from_text()` / `score_symbol()` / `analyze()`，CLI 与 cycle 共用；`build_card` 增加 `sig_objs/metrics/env_clear` 供 STE 渲染 |
+| `src/watch_inbox.py` | **按频道分目录**落地：解析 `discord-<频道>-<id>-<时间>.json` 的频道名 → `chats_by_date/<日>/<频道>/merged.*`（旧无标签文件归 `misc/`） |
+| `scripts/register_task.ps1` | 一键注册/卸载 Windows 计划任务 |
+
+**冒烟测试（已过）**
+- `cycle.py --dry-run --no-watch --anchor last --date 20260803`：窗口切片、STE 简报、STE 信号卡、消息拼装全部正常。
+- `watch_inbox` 频道路由：`discord-frank-…-….json` → `20260803/frank/merged.*`，`channel_of()` 各种文件名解析正确。
+- `discord_post.split_message`：长文本按行分片、空串返回空、单行超长硬切均正确。
+
+**衔接说明 / 已知点**
+- watcher 现在**按频道分目录**，旧的扁平 `chats_by_date/<日>/merged.*` 仍被 cycle 兼容读取（flat 兜底）。
+- 信号每 15min 会往 `signals.db` 写一条 run（96 条/天）——这是有意的台账；嫌多可给 cycle 加 `--no-save`。
+- 依赖那个 Discord 标签页保持打开（被动采集）——和 Part A 一样的前提。
+- 尚未做：宏观事件日历自动判断 `--event-today`（仍手动）、`outcomes` 回填（B4）。
+
+---
+
 *本文只覆盖 MVP v0 的数据入库与数据源盘点。信号/打分引擎见 [盯盘工具设计](盯盘工具设计.md) §2–§4，方法论见 [交易信号复盘与方法总结](交易信号复盘与方法总结.md)。*
