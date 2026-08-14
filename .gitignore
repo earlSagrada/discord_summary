@@ -20,6 +20,7 @@ data/inbox/
 
 # Runtime log of the 15-min cycle (diagnostics only, not source)
 data/cycle.log
+data/cycle_state.json
 
 # Local secrets/config
 .env

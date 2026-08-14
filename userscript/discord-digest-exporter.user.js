@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Discord Channel Digest Exporter
 // @namespace    local.discord.digest
-// @version      0.4
+// @version      0.5
 // @description  从渲染后的 DOM 抓取当前频道的聊天记录，保留引用、图片和 embed，导出 JSON / 精简文本 / 图片 URL 清单
 // @match        https://discord.com/channels/*
 // @match        https://ptb.discord.com/channels/*
@@ -30,12 +30,32 @@
     ],
     navTimeoutMs: 15000,  // 切换频道后等待其加载的最长时间
     navSettleMs: 1500,    // 频道切换到位后，额外等待消息渲染的时间
+    // 输出频道（就是我们推送简报的那个频道）。停摆恢复后，脚本会读它「最后一条消息的时间」，
+    // 当作「上次交付到哪了」的基准，把各源频道向上滚动补采到那个时间点。
+    outputChannel: { guildId: '1536800706332336198', channelId: '1536800864403198025' },
+    maxBackfillHours: 12, // 停摆补采最多回看多少小时
   };
 
   let autoTimer = null;   // 自动导出的 setTimeout 句柄
   let autoRunning = false; // 自动导出正在跑（避免重入）
-  let lastExportAt = null; // 上次成功自动导出的时间（用于面板显示 + 停摆告警）
+  let lastExportAt = null; // 上次成功自动导出的时间（用于面板显示 + 停摆告警 + 补采基准）
   let lastExportCount = 0; // 上次自动导出实际写出的消息条数（各频道之和）
+
+  // localStorage 持久化：跨「标签页被浏览器丢弃后重载」也能记住状态，从而补采停摆缺口
+  const LS_LAST = 'digest_lastExportAt';
+  const LS_AUTO = 'digest_autoOn';
+  function saveLastExport() {
+    try { if (lastExportAt) localStorage.setItem(LS_LAST, lastExportAt.toISOString()); } catch (_) {}
+  }
+  function loadLastExport() {
+    try { const v = localStorage.getItem(LS_LAST); if (v) lastExportAt = new Date(v); } catch (_) {}
+  }
+  function saveAutoFlag(on) {
+    try { localStorage.setItem(LS_AUTO, on ? '1' : '0'); } catch (_) {}
+  }
+  function autoWasOn() {
+    try { return localStorage.getItem(LS_AUTO) === '1'; } catch (_) { return false; }
+  }
 
   // 每个频道独立一份 store：channelId -> Map(messageId -> record)
   const stores = new Map();
@@ -299,11 +319,15 @@
   }
 
   // 导出指定频道（chId）已采集的消息；不传则导出当前频道
+  // opts.sinceISO 存在时，导出该时间点以后的全部消息（用于停摆补采）；否则按 CFG.limitByHours。
   function exportChannel(chId, opts) {
     const silent = opts && opts.silent;
     const label = (opts && opts.label) || chId || 'unknown';
+    const sinceISO = opts && opts.sinceISO;
     const store = storeFor(chId);
-    const rows = finalize(CFG.limitByHours, store);
+    let rows = sinceISO
+      ? finalize(false, store).filter((r) => r.ts >= sinceISO)
+      : finalize(CFG.limitByHours, store);
     if (!rows.length) {
       if (silent) { console.log(`[digest] 自动导出：${label} 尚无消息，跳过。`); return 0; }
       alert(`频道 ${label} 还没采集到消息。`);
@@ -315,7 +339,7 @@
     download(`discord-${tag}-${stamp}.json`, JSON.stringify(rows, null, 2), 'application/json');
     download(`discord-${tag}-${stamp}.txt`, text);
     if (imgs.length) download(`discord-${tag}-${stamp}-images.txt`, imgs.join('\n'));
-    if (silent) console.log(`[digest] 自动导出 ${label} @ ${stamp}，${rows.length} 条。`);
+    if (silent) console.log(`[digest] 自动导出 ${label} @ ${stamp}，${rows.length} 条${sinceISO ? '（补采）' : ''}。`);
     return rows.length;
   }
 
@@ -352,7 +376,46 @@
     return false;
   }
 
-  // 依次跳到 CFG.autoChannels 的每个频道采集，再各自导出，最后回到原频道
+  // 读「输出频道」最后一条消息的时间（= 我们上次交付简报的时间）。best-effort，失败返回 null。
+  // 只读时间戳，不采集（不污染 store）。
+  async function readOutputLastTs() {
+    const oc = CFG.outputChannel;
+    if (!oc || !oc.channelId) return null;
+    const ok = await navigateToChannel(oc.guildId, oc.channelId);
+    if (!ok) { console.warn('[digest] 读不到输出频道，跳过补采基准。'); return null; }
+    await sleep(CFG.navSettleMs);
+    let maxTs = null;
+    for (const li of messageNodes()) {
+      const t = li.querySelector('time[datetime]');
+      const ts = t && t.getAttribute('datetime');
+      if (ts && (!maxTs || ts > maxTs)) maxTs = ts;
+    }
+    return maxTs;
+  }
+
+  // 在当前频道向上滚动，把历史补采到 sinceISO（不早于 12h 硬上限），供停摆恢复用
+  async function backfillCurrentTo(sinceISO) {
+    const scroller = findScroller();
+    if (!scroller) return;
+    const hardStop = new Date(Date.now() - CFG.maxBackfillHours * 3600 * 1000).toISOString();
+    const target = sinceISO > hardStop ? sinceISO : hardStop;
+    let stagnant = 0;
+    harvest();
+    while (stagnant < CFG.stagnantLimit) {
+      const oldest = oldestTs();
+      if (oldest && oldest <= target) break;
+      if (scroller.scrollTop <= 1) stagnant++;
+      scroller.scrollTop -= scroller.clientHeight * CFG.scrollRatio;
+      await sleep(CFG.scrollDelayMs);
+      const added = harvest();
+      stagnant = added > 0 ? 0 : stagnant + 1;
+      updatePanel();
+    }
+  }
+
+  // 依次跳到 CFG.autoChannels 的每个频道采集，再各自导出，最后回到原频道。
+  // 若检测到停摆（距上次导出 > 2 个周期），先读输出频道最后消息时间为基准，
+  // 各源频道向上滚动补采到该时间点（最多 12h），再导出这段完整区间。
   async function autoExportRun(opts) {
     const silent = opts && opts.silent;
     if (autoRunning) { console.log('[digest] 上一次自动导出还没跑完，本次跳过。'); return; }
@@ -360,26 +423,45 @@
     const originPath = location.pathname; // 记住原来所在位置，跑完回去
     const originMatch = originPath.match(/\/channels\/([^/]+)\/(\d+)/);
     try {
+      const nowMs = Date.now();
+      const lsLast = lastExportAt ? lastExportAt.getTime() : null;
+      const stalled = lsLast && (nowMs - lsLast > CFG.autoExportMin * 2 * 60 * 1000);
+      let sinceISO = null;
+      if (stalled) {
+        // 基准优先用输出频道最后一条消息（= 上次真正交付的时间）；读不到则退回上次导出时间
+        let baseMs = lsLast;
+        const outTs = await readOutputLastTs();
+        if (outTs) baseMs = Date.parse(outTs);
+        const hardStopMs = nowMs - CFG.maxBackfillHours * 3600 * 1000;
+        sinceISO = new Date(Math.max(baseMs, hardStopMs)).toISOString();
+        console.log(`[digest] 检测到停摆，本次补采自 ${sinceISO}（最多 ${CFG.maxBackfillHours}h）。`);
+      }
+
       for (const ch of CFG.autoChannels) {
         const ok = await navigateToChannel(ch.guildId, ch.channelId);
         if (!ok) { console.warn(`[digest] 无法切换到 ${ch.name}（${ch.channelId}），跳过。`); continue; }
-        // 到位后采集当前可见消息（多采几次，等惰性渲染）
-        harvest(); await sleep(600);
-        harvest(); await sleep(600);
-        harvest();
+        if (sinceISO) {
+          await backfillCurrentTo(sinceISO);   // 停摆：向上滚动补采缺口
+        } else {
+          // 正常：采集当前可见消息（多采几次，等惰性渲染）
+          harvest(); await sleep(600);
+          harvest(); await sleep(600);
+          harvest();
+        }
         updatePanel();
       }
       // 回到原频道
       if (originMatch) {
         await navigateToChannel(originMatch[1], originMatch[2]);
       }
-      // 各频道分别导出
+      // 各频道分别导出（停摆时导出整段缺口区间）
       let wrote = 0;
       for (const ch of CFG.autoChannels) {
-        wrote += exportChannel(ch.channelId, { silent, label: ch.name }) || 0;
+        wrote += exportChannel(ch.channelId, { silent, label: ch.name, sinceISO }) || 0;
       }
       lastExportAt = new Date();
       lastExportCount = wrote;
+      saveLastExport();
     } finally {
       autoRunning = false;
       updatePanel();
@@ -415,10 +497,12 @@
     const on = typeof force === 'boolean' ? force : !autoTimer;
     if (on && !autoTimer) {
       scheduleNextExport();
+      saveAutoFlag(true);
       console.log(`[digest] 自动导出已开启（时钟对齐，每 ${CFG.autoExportMin} 分钟）；覆盖频道：${CFG.autoChannels.map((c) => c.name).join('、')}。需要立刻导出可点「②立即导出」。`);
     } else if (!on && autoTimer) {
       clearTimeout(autoTimer);
       autoTimer = null;
+      saveAutoFlag(false);
       console.log('[digest] 自动导出已关闭。');
     }
     const btn = panel && panel.querySelector('#dg-auto');
@@ -559,6 +643,12 @@
     buildPanel();
     startPassive();
     startStallWatchdog();
+    loadLastExport();             // 恢复上次导出时间（跨标签页丢弃/重载），用于停摆补采
+    updatePanel();
+    if (autoWasOn()) {            // 之前开着定时导出 → 重载后自动恢复（并补采停摆缺口）
+      toggleAuto(true);
+      console.log('[digest] 侦测到之前已开启定时导出 → 自动恢复。若刚经历停摆，下一轮会自动向上滚动补采。');
+    }
     if (CFG.autoScroll) autoScrollCollect();
     console.log('[digest] 已就绪。被动模式：自己往上滾，脚本会记录。window.__digest 可手动调用（例：__digest.toggleAuto(true) 开启每 15min 自动导出）。');
   });

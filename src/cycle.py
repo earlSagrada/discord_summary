@@ -17,9 +17,10 @@
 """
 
 import argparse
+import json
 import sys
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import config
 import pulse
@@ -27,6 +28,7 @@ import signal_format
 import signals as S
 
 CYCLE_LOG = config.DATA_DIR / "cycle.log"
+STATE_FILE = config.DATA_DIR / "cycle_state.json"
 
 
 def log(msg: str) -> None:
@@ -42,6 +44,30 @@ def log(msg: str) -> None:
 
 # 窗口内消息数 ≤ 这个值时，简报里注明「群里没几条新消息」
 LOW_ACTIVITY_MAX = 8
+# 停摆恢复后，追补摘要最多回看这么久（分钟）——对齐油猴脚本 maxBackfillHours=12
+MAX_CATCHUP_MIN = 12 * 60
+
+
+def load_last_post() -> datetime | None:
+    """读上次成功推送的 UTC 时间（= 输出频道里我们最后一条消息的时间）。"""
+    if not STATE_FILE.exists():
+        return None
+    try:
+        raw = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+        ts = raw.get("last_post_ts")
+        return datetime.fromisoformat(ts) if ts else None
+    except (json.JSONDecodeError, OSError, ValueError):
+        return None
+
+
+def save_last_post(ts: datetime) -> None:
+    try:
+        STATE_FILE.write_text(
+            json.dumps({"last_post_ts": ts.isoformat()}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except OSError:
+        pass
 
 
 def today_str(now: datetime) -> str:
@@ -49,12 +75,27 @@ def today_str(now: datetime) -> str:
 
 
 def enriched_paths(date_str: str) -> list:
-    """当天各频道的 merged.enriched.txt（含旧的扁平布局兜底）。"""
+    """某一天各频道的 merged.enriched.txt（含旧的扁平布局兜底）。"""
     base = config.CHATS_DIR / date_str
     paths = sorted(base.glob("*/merged.enriched.txt"))  # 新：按频道分目录
     flat = base / "merged.enriched.txt"                 # 旧：扁平
     if flat.exists():
         paths.append(flat)
+    return paths
+
+
+def enriched_paths_for_window(now: datetime, win_min: float, forced_date: str | None) -> list:
+    """窗口可能跨 UTC 日界（追补最多 12h），把窗口覆盖到的每一天的文件都收进来。"""
+    if forced_date:
+        return enriched_paths(forced_date)
+    start = now - timedelta(minutes=win_min)
+    days, cur = [], start.date()
+    while cur <= now.date():
+        days.append(cur.strftime("%Y%m%d"))
+        cur += timedelta(days=1)
+    paths = []
+    for d in days:
+        paths.extend(enriched_paths(d))
     return paths
 
 
@@ -69,11 +110,22 @@ def run_once(args) -> int:
         n = watch_inbox.scan_once(done)
         log(f"watcher 处理了 {n} 个新导出")
 
-    # 2) 收集当天各频道 enriched，切最近窗口
-    date_str = args.date or today_str(now)
-    paths = enriched_paths(date_str)
+    # 2) 决定窗口：正常 = args.minutes；若距上次推送有缺口 -> 追补窗口（上限 12h）
+    win_min = float(args.minutes)
+    catchup = False
+    last_post = None if args.always else load_last_post()
+    if last_post and args.anchor == "now":
+        gap_min = (now - last_post).total_seconds() / 60
+        if gap_min > args.minutes:
+            win_min = min(gap_min, MAX_CATCHUP_MIN)
+            catchup = True
+            log(f"检测到缺口：上次推送在 {last_post.strftime('%m-%d %H:%M UTC')}"
+                f"（{gap_min:.0f} 分钟前）→ 追补窗口 {win_min:.0f} 分钟（上限 {MAX_CATCHUP_MIN}）")
+
+    # 3) 收集窗口覆盖到的各天/各频道 enriched
+    paths = enriched_paths_for_window(now, win_min, args.date)
     if not paths:
-        log(f"结果：跳过（没有 {date_str} 的 enriched 记录）")
+        log("结果：跳过（没有可用的 enriched 记录）")
         return 0
     texts = [p.read_text(encoding="utf-8") for p in paths]
 
@@ -83,7 +135,6 @@ def run_once(args) -> int:
         anchor = max(stamps) if stamps else now
 
     # 最近一条消息距今多久 —— 判断「导出是否停摆」的关键信号
-    latest = None
     latest_stamps = [t for t in (pulse.last_ts(x) for x in texts) if t]
     if latest_stamps:
         latest = max(latest_stamps)
@@ -93,18 +144,22 @@ def run_once(args) -> int:
             log(f"提示：最近消息已超过窗口 {args.minutes} 分钟，导出可能停摆"
                 f"（Discord 标签页被后台丢弃/电脑睡眠？）")
 
-    window, n_msg = pulse.combine_recent(texts, args.minutes, anchor)
-    log(f"窗口内 {n_msg} 条消息（最近 {args.minutes} 分钟，来自 {len(paths)} 个频道）")
+    window, n_msg = pulse.combine_recent(texts, win_min, anchor)
+    log(f"窗口内 {n_msg} 条消息（最近 {win_min:.0f} 分钟，来自 {len(paths)} 个文件"
+        f"{'，追补模式' if catchup else ''}）")
     if n_msg == 0 and not args.always:
         log("结果：跳过（窗口内无新消息，不调 AI、不推送）")
         return 0
 
-    low_activity = 0 < n_msg <= LOW_ACTIVITY_MAX
+    low_activity = (not catchup) and 0 < n_msg <= LOW_ACTIVITY_MAX
 
-    # 3) 脉搏简报（STE 英语）
-    brief = pulse.summarize(window, model=args.model) if n_msg else ""
+    # 4) 脉搏简报（STE 英语）；追补模式给更大的输出上限
+    brief = pulse.summarize(
+        window, model=args.model,
+        max_tokens=4000 if catchup else pulse.MAX_TOKENS,
+    ) if n_msg else ""
 
-    # 4) 信号：从当天全部讨论抽标的，重新打分（默认连个股一起，信号更多）
+    # 5) 信号：从当天全部讨论抽标的，重新打分（默认连个股一起，信号更多）
     full_text = "\n".join(texts)
     syms, mentions, unknown = S.resolve_from_text(full_text, all_=not args.focus_only)
     syms = syms[: args.limit]
@@ -114,16 +169,21 @@ def run_once(args) -> int:
             syms,
             event_today=args.event_today,
             save=not (args.no_save or args.dry_run),
-            source_label=f"cycle:{date_str}",
+            source_label=f"cycle:{today_str(now)}",
             mentions=mentions,
         )
     ste_signals = signal_format.format_cards(cards, anchor)
 
-    # 5) 组装消息
+    # 6) 组装消息
     stamp = anchor.strftime("%Y-%m-%d %H:%M UTC")
-    header = f"🕒 **Trading pulse — {stamp}**"
-    if low_activity:
-        header += f"\n_Low activity: only {n_msg} new messages in the last {args.minutes} minutes._"
+    if catchup:
+        hrs = win_min / 60
+        header = (f"📣 **Catch-up — you missed the last {hrs:.1f} hours** ({stamp})\n"
+                  f"_The export paused for a while. This message covers the whole gap._")
+    else:
+        header = f"🕒 **Trading pulse — {stamp}**"
+        if low_activity:
+            header += f"\n_Low activity: only {n_msg} new messages in the last {args.minutes} minutes._"
     body_parts = [header]
     if brief:
         body_parts.append(brief)
@@ -139,7 +199,8 @@ def run_once(args) -> int:
 
     import discord_post
     sent = discord_post.send(message)
-    log(f"结果：已推送 {sent} 条到 Discord")
+    save_last_post(now)
+    log(f"结果：已推送 {sent} 条到 Discord{'（追补）' if catchup else ''}")
     return 0
 
 
