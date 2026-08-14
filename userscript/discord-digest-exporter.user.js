@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Discord Channel Digest Exporter
 // @namespace    local.discord.digest
-// @version      0.3
+// @version      0.4
 // @description  从渲染后的 DOM 抓取当前频道的聊天记录，保留引用、图片和 embed，导出 JSON / 精简文本 / 图片 URL 清单
 // @match        https://discord.com/channels/*
 // @match        https://ptb.discord.com/channels/*
@@ -32,8 +32,10 @@
     navSettleMs: 1500,    // 频道切换到位后，额外等待消息渲染的时间
   };
 
-  let autoTimer = null;   // 自动导出的 setInterval 句柄
+  let autoTimer = null;   // 自动导出的 setTimeout 句柄
   let autoRunning = false; // 自动导出正在跑（避免重入）
+  let lastExportAt = null; // 上次成功自动导出的时间（用于面板显示 + 停摆告警）
+  let lastExportCount = 0; // 上次自动导出实际写出的消息条数（各频道之和）
 
   // 每个频道独立一份 store：channelId -> Map(messageId -> record)
   const stores = new Map();
@@ -372,9 +374,12 @@
         await navigateToChannel(originMatch[1], originMatch[2]);
       }
       // 各频道分别导出
+      let wrote = 0;
       for (const ch of CFG.autoChannels) {
-        exportChannel(ch.channelId, { silent, label: ch.name });
+        wrote += exportChannel(ch.channelId, { silent, label: ch.name }) || 0;
       }
+      lastExportAt = new Date();
+      lastExportCount = wrote;
     } finally {
       autoRunning = false;
       updatePanel();
@@ -449,6 +454,7 @@
     panel.innerHTML =
       '<div style="font-weight:600;margin-bottom:6px">📥 聊天导出器</div>' +
       '<div id="dg-count" style="margin-bottom:8px">已采集 0 条消息</div>' +
+      '<div id="dg-last" style="margin-bottom:8px;font-size:11px;color:#949ba4">定时导出：未开启</div>' +
       '<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;cursor:pointer" ' +
       'title="勾选=只导出最近这段时间的消息；取消=导出所有已采集的消息">' +
       '<input id="dg-limit" type="checkbox" checked style="margin:0" />' +
@@ -486,6 +492,40 @@
     const chId = currentChannelId();
     const total = [...stores.values()].reduce((n, s) => n + s.size, 0);
     el.textContent = `本频道 ${currentStore().size} 条 · 合计 ${total} 条` + (chId ? `（ch ${chId}）` : '');
+
+    const last = panel.querySelector('#dg-last');
+    if (!last) return;
+    if (!autoTimer && !lastExportAt) {
+      last.textContent = '定时导出：未开启';
+      last.style.color = '#949ba4';
+      return;
+    }
+    if (!lastExportAt) {
+      last.textContent = '定时导出：已开启，等待首次导出…';
+      last.style.color = '#949ba4';
+      return;
+    }
+    const ageMin = (Date.now() - lastExportAt.getTime()) / 60000;
+    const hhmm = lastExportAt.toLocaleTimeString();
+    // 超过 2 个导出周期没动静 → 判定停摆，标红提醒
+    const stale = ageMin > CFG.autoExportMin * 2 + 1;
+    last.textContent = `上次导出 ${hhmm}（${Math.round(ageMin)}分钟前 · ${lastExportCount}条）`
+      + (stale ? ' ⚠停摆?' : '');
+    last.style.color = stale ? '#f23f42' : '#949ba4';
+  }
+
+  // 停摆看门狗：每分钟检查一次，若长时间没有自动导出就在控制台告警（多因标签页被后台丢弃/电脑睡眠）
+  function startStallWatchdog() {
+    setInterval(() => {
+      updatePanel();
+      if (!autoTimer || !lastExportAt) return;
+      const ageMin = (Date.now() - lastExportAt.getTime()) / 60000;
+      if (ageMin > CFG.autoExportMin * 2 + 1) {
+        console.warn(`[digest] ⚠ 已 ${Math.round(ageMin)} 分钟没有自动导出。`
+          + '常见原因：此标签页被浏览器后台丢弃、或电脑进入睡眠。'
+          + '把 Discord 标签页保持前台/固定(pin)，或检查系统睡眠设置。');
+      }
+    }, 60 * 1000);
   }
 
   // ────────────────────────── 启动 ──────────────────────────
@@ -518,6 +558,7 @@
   waitForDiscord(() => {
     buildPanel();
     startPassive();
+    startStallWatchdog();
     if (CFG.autoScroll) autoScrollCollect();
     console.log('[digest] 已就绪。被动模式：自己往上滾，脚本会记录。window.__digest 可手动调用（例：__digest.toggleAuto(true) 开启每 15min 自动导出）。');
   });

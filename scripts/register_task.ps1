@@ -51,7 +51,9 @@ $Trigger = New-ScheduledTaskTrigger -Once -At $Start `
 
 $Settings = New-ScheduledTaskSettingsSet `
     -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
-    -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 10)
+    -StartWhenAvailable -WakeToRun `
+    -RestartCount 2 -RestartInterval (New-TimeSpan -Minutes 1) `
+    -ExecutionTimeLimit (New-TimeSpan -Minutes 10)
 
 Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger `
     -Settings $Settings -Description "每 $Minutes 分钟：入库+脉搏简报+信号+推送到 Discord" -Force | Out-Null

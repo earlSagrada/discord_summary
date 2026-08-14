@@ -18,6 +18,9 @@ data/market_cache/
 # Local inbox (browser downloads land here, then get filed into data/chats_by_date/)
 data/inbox/
 
+# Runtime log of the 15-min cycle (diagnostics only, not source)
+data/cycle.log
+
 # Local secrets/config
 .env
 .env.*

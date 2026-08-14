@@ -232,6 +232,42 @@ python src/digest.py discord-202607261830.enriched.txt --debug
 
 > 改推送措辞：脉搏简报的 prompt 在 [prompts/pulse_summary.md](prompts/pulse_summary.md)；
 > 信号的 STE 模板在 [src/signal_format.py](src/signal_format.py)。
+> 重点发言人名单在 [prompts/vip_speakers.txt](prompts/vip_speakers.txt)（一行一个，随时加）。
+
+### 排查「推送暂停了一段时间」
+
+推送靠两条腿：**① 油猴脚本每 15 分钟导出文件**、**② 计划任务每 15 分钟消费**。
+任何一条停了都会出现「一段时间没有新推送」。先看两个日志：
+
+```powershell
+# cycle 每轮都会记：窗口多少条消息、推了还是跳过、为什么、有没有报错
+Get-Content data\cycle.log -Tail 30
+# watcher 记：inbox 里的导出有没有被处理
+Get-Content data\inbox\watch.log -Tail 30
+```
+
+日志里常见结论与含义：
+
+| 日志 | 含义 | 处理 |
+|---|---|---|
+| `结果：跳过（窗口内无新消息）` + `最近消息…分钟前` 很大 | **导出停摆**：油猴脚本没在产出文件 | 见下方「导出停摆」 |
+| `结果：已推送 N 条` | 正常 | —— |
+| `结果：本轮失败 …` + traceback | cycle 报错（多为 API/网络/Webhook） | 看 traceback；检查 `.env`、代理 |
+| watch.log 有大段时间没有任何行 | 那段时间 inbox 没进新文件 = 导出停摆 | 见下方 |
+
+**导出停摆最常见的两个原因**（都在浏览器/系统侧，不是脚本 bug）：
+
+1. **Chrome 把后台的 Discord 标签页「丢弃/冻结」了**。长时间不看那个标签，浏览器会冻结甚至卸载它，定时器就停了。
+   - 缓解：把 Discord 标签**固定(pin)**、尽量别最小化太久；
+     或在 `chrome://discards` 里把 discord.com 设为不可丢弃；
+     或用一个单独的窗口只放 Discord。
+   - 脚本 v0.4 起，右下角面板会显示「上次导出 时间（N 分钟前）」，**超过 2 个周期没动静会标红 ⚠停摆?**，控制台也会告警——一眼就能看出是不是它停了。
+2. **电脑睡眠**。睡眠时脚本和计划任务都会暂停。
+   - 任务已设 `WakeToRun`（到点唤醒）+ 电池也运行；但**浏览器里的油猴定时器无法唤醒系统**，所以睡眠期间的消息仍会漏。
+   - 盯盘时段建议把电源计划设为不睡眠。
+
+> 长缺口（夜里几小时）通常就是关机/睡眠，属正常。要留意的是**盘中**的 1–3 小时缺口，一般就是上面第 1 条。
+
 
 ---
 

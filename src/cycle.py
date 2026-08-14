@@ -18,6 +18,7 @@
 
 import argparse
 import sys
+import traceback
 from datetime import datetime, timezone
 
 import config
@@ -25,9 +26,18 @@ import pulse
 import signal_format
 import signals as S
 
+CYCLE_LOG = config.DATA_DIR / "cycle.log"
+
 
 def log(msg: str) -> None:
-    print(f"{datetime.now().strftime('%H:%M:%S')}  {msg}", flush=True)
+    """打印到 stdout，并追加到 data/cycle.log（永久留存，便于事后排查「暂停」原因）。"""
+    line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  {msg}"
+    print(line, flush=True)
+    try:
+        with CYCLE_LOG.open("a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except OSError:
+        pass
 
 
 # 窗口内消息数 ≤ 这个值时，简报里注明「群里没几条新消息」
@@ -50,6 +60,7 @@ def enriched_paths(date_str: str) -> list:
 
 def run_once(args) -> int:
     now = datetime.now(timezone.utc)
+    log(f"=== run start (UTC {now.strftime('%Y-%m-%d %H:%M:%S')}) ===")
 
     # 1) 入库
     if not args.no_watch:
@@ -62,7 +73,7 @@ def run_once(args) -> int:
     date_str = args.date or today_str(now)
     paths = enriched_paths(date_str)
     if not paths:
-        log(f"没有 {date_str} 的 enriched 记录，跳过本轮")
+        log(f"结果：跳过（没有 {date_str} 的 enriched 记录）")
         return 0
     texts = [p.read_text(encoding="utf-8") for p in paths]
 
@@ -71,10 +82,21 @@ def run_once(args) -> int:
         stamps = [t for t in (pulse.last_ts(x) for x in texts) if t]
         anchor = max(stamps) if stamps else now
 
+    # 最近一条消息距今多久 —— 判断「导出是否停摆」的关键信号
+    latest = None
+    latest_stamps = [t for t in (pulse.last_ts(x) for x in texts) if t]
+    if latest_stamps:
+        latest = max(latest_stamps)
+        age_min = (now - latest).total_seconds() / 60
+        log(f"最近一条消息：{latest.strftime('%H:%M UTC')}（{age_min:.0f} 分钟前）")
+        if args.anchor == "now" and age_min > args.minutes:
+            log(f"提示：最近消息已超过窗口 {args.minutes} 分钟，导出可能停摆"
+                f"（Discord 标签页被后台丢弃/电脑睡眠？）")
+
     window, n_msg = pulse.combine_recent(texts, args.minutes, anchor)
     log(f"窗口内 {n_msg} 条消息（最近 {args.minutes} 分钟，来自 {len(paths)} 个频道）")
     if n_msg == 0 and not args.always:
-        log("窗口内无新消息，跳过（不调 AI、不推送）")
+        log("结果：跳过（窗口内无新消息，不调 AI、不推送）")
         return 0
 
     low_activity = 0 < n_msg <= LOW_ACTIVITY_MAX
@@ -109,7 +131,7 @@ def run_once(args) -> int:
     message = "\n\n".join(body_parts).strip()
 
     if args.dry_run:
-        log("dry-run：不推送，以下是将要发送的内容\n")
+        log("结果：dry-run（不推送），以下是将要发送的内容\n")
         print("=" * 60)
         print(message)
         print("=" * 60)
@@ -117,7 +139,7 @@ def run_once(args) -> int:
 
     import discord_post
     sent = discord_post.send(message)
-    log(f"已推送 {sent} 条到 Discord")
+    log(f"结果：已推送 {sent} 条到 Discord")
     return 0
 
 
@@ -141,8 +163,11 @@ def main() -> None:
 
     try:
         sys.exit(run_once(args))
-    except RuntimeError as e:
-        log(f"本轮失败：{e}")
+    except SystemExit:
+        raise
+    except Exception as e:
+        log(f"结果：本轮失败 {type(e).__name__}: {e}")
+        log("traceback: " + traceback.format_exc().replace("\n", " | "))
         sys.exit(1)
 
 
