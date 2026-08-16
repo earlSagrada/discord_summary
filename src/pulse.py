@@ -208,6 +208,41 @@ def _fmt_utc(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%d %H:%M")
 
 
+def signal_block(window_text: str, now: datetime | None = None, limit: int = 20) -> str:
+    """给一段窗口文本抽标的、打分（含期权确认），渲染成 STE 信号卡。
+
+    行情/期权用的是**当前**数据（非历史那天），所以下面会加一句说明。
+    """
+    import signal_format
+    import signals as S
+
+    syms, mentions, _ = S.resolve_from_text(window_text, all_=True)
+    syms = syms[:limit]
+    if not syms:
+        return ""
+
+    try:
+        import events
+        ev_names = events.event_names()
+    except Exception:
+        ev_names = []
+
+    try:
+        import extract
+        mention_times = extract.last_mention_times([window_text])
+    except Exception:
+        mention_times = {}
+
+    cards, _ = S.analyze(
+        syms, event_today=bool(ev_names), save=False,
+        source_label="pulse-range", mentions=mentions,
+        now=now, mention_times=mention_times, event_names=ev_names,
+    )
+    body = signal_format.format_cards(cards, now)
+    note = "_Note: the signals and options use today's market data, not the data of the past days._"
+    return f"{note}\n\n{body}"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="脉搏简报（STE 英语）")
     ap.add_argument("inputs", nargs="*", type=Path, help="一个或多个 merged.enriched.txt")
@@ -220,6 +255,8 @@ def main() -> None:
                     help="历史起点 UTC：YYYYMMDD 或 YYYYMMDDHHMM")
     ap.add_argument("--to", type=_parse_utc_stamp, default=None,
                     help="历史终点 UTC（可选）：YYYYMMDD 或 YYYYMMDDHHMM")
+    ap.add_argument("--signals", action="store_true",
+                    help="简报后附上这段时间点到的票的带期权信号卡（用当前行情/期权数据）")
     ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument("--no-api", action="store_true", help="只切窗口、不调用 AI（看看喂进去的内容）")
     ap.add_argument("--post", action="store_true", help="把历史简报推送到 Discord webhook")
@@ -266,13 +303,20 @@ def main() -> None:
     if range_mode and end - start > timedelta(hours=3):
         max_tokens = 4000
     brief = summarize(window, model=args.model, max_tokens=max_tokens)
+
+    sig_text = ""
+    if args.signals:
+        print("[抽标的、打分（含期权）…]", file=sys.stderr)
+        sig_text = signal_block(window, now=end)
+
+    body = brief if not sig_text else f"{brief}\n\n{sig_text}"
     if args.post and range_mode:
         import discord_post
         header = f"📜 **Historical pulse — {_fmt_utc(start)} → {_fmt_utc(end)} UTC**"
-        sent = discord_post.send(f"{header}\n\n{brief}")
+        sent = discord_post.send(f"{header}\n\n{body}")
         print(f"[已推送 {sent} 条到 Discord]", file=sys.stderr)
         return
-    print(brief)
+    print(body)
 
 
 if __name__ == "__main__":

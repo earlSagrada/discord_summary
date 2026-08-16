@@ -257,9 +257,16 @@ python src/digest.py discord-202607261830.enriched.txt --debug
 # 只看喂进去的窗口、不调 AI
 .\.venv\Scripts\python.exe src\pulse.py --last 3d --no-api
 
+# 简报后附上"这段时间点到的票"的带期权信号卡（IV / 支撑阻力 / 异常量 / capped）
+.\.venv\Scripts\python.exe src\pulse.py --last 3d --signals
+
 # 把历史简报推送到 Discord
 .\.venv\Scripts\python.exe src\pulse.py --from 20260813 --to 20260814 --post
 ```
+
+> **`pulse.py` 默认只出"读懂群在聊什么"的脉搏简报，不含期权/信号**——期权分析在**信号卡**里
+> （每 15 分钟的 `cycle.py` 推送、或 `signals.py`）。想在历史 pulse 里也看到带期权的信号卡，
+> 加 `--signals`。注意：信号/期权用的是**当前**行情数据（不是历史那天），输出里会注明。
 
 > **为什么触发方式是命令行**：我们只有**出站** Discord Webhook，没有能读你消息的入站 bot，
 > 所以没法"在 Discord 里打命令触发"。历史 pulse 就是按需在命令行跑（也可绑热键 / 计划任务）。
