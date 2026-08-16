@@ -1280,7 +1280,7 @@
  {
   "id": "1537716357607456768",
   "ts": "2026-08-14T06:55:49.042Z",
-  "author": "原神启动",
+  "author": "做总统的朋友",
   "text": "黄色闪光",
   "reply": null,
   "media": [],
@@ -1298,7 +1298,7 @@
  {
   "id": "1537716391816466432",
   "ts": "2026-08-14T06:55:57.198Z",
-  "author": "原神启动",
+  "author": "做总统的朋友",
   "text": "敏捷交易",
   "reply": null,
   "media": [],
@@ -1307,7 +1307,7 @@
  {
   "id": "1537716421839159296",
   "ts": "2026-08-14T06:56:04.356Z",
-  "author": "原神启动",
+  "author": "做总统的朋友",
   "text": "换句话说",
   "reply": null,
   "media": [],
@@ -1316,7 +1316,7 @@
  {
   "id": "1537716454751871086",
   "ts": "2026-08-14T06:56:12.203Z",
-  "author": "原神启动",
+  "author": "做总统的朋友",
   "text": "早谢",
   "reply": null,
   "media": [],
@@ -1476,7 +1476,14 @@
   "text": "https://x.com/corsica267/status/2087970339917811955?s=46&t=wD9rA5JvOhUaFcG0hcJ7vA",
   "reply": null,
   "media": [],
-  "embeds": []
+  "embeds": [
+   {
+    "author": "本杰明乌萨奇 (@Corsica267)",
+    "title": "",
+    "desc": "我柜子动了我不玩了",
+    "url": ""
+   }
+  ]
  },
  {
   "id": "1537732328774959198",
@@ -1776,10 +1783,10 @@
   "id": "1537734443693768705",
   "ts": "2026-08-14T08:07:41.101Z",
   "author": "烦恼风",
-  "text": "我跟正确的分析框架，如果分析师的分析框架不对就要检讨他的分析框架",
+  "text": "哥你都说了只看别人分析的结果",
   "reply": {
-   "author": "@Inflection",
-   "text": "我跟正确的分析框架，如果分析师的分析框架不对就要检讨他的分析框架"
+   "author": "",
+   "text": "Message could not be loaded"
   },
   "media": [],
   "embeds": []
@@ -2141,7 +2148,7 @@
  {
   "id": "1537735900812017695",
   "ts": "2026-08-14T08:13:28.505Z",
-  "author": "做总统的朋友",
+  "author": "原神启动",
   "text": "🐉🐸",
   "reply": null,
   "media": [],
@@ -5543,7 +5550,7 @@
  {
   "id": "1537835703709204491",
   "ts": "2026-08-14T14:50:03.370Z",
-  "author": "sivir0037",
+  "author": "我闻到了小牛蛋蛋的香味",
   "text": "inod连续很多天收盘守住了200日均",
   "reply": null,
   "media": [],
@@ -5556,8 +5563,8 @@
   "text": "",
   "reply": null,
   "media": [
-   "https://cdn.discordapp.com/attachments/1459466706132013170/1537835945041207447/image.png?ex=6a807cd4&is=6a7f2b54&hm=ffb8a2910f375206ab1579694d851a2106035753e526f99ed2a5c7c1de3553dc",
-   "https://media.discordapp.net/attachments/1459466706132013170/1537835945041207447/image.png?ex=6a807cd4&is=6a7f2b54&hm=ffb8a2910f375206ab1579694d851a2106035753e526f99ed2a5c7c1de3553dc&=&format=webp&quality=lossless"
+   "https://cdn.discordapp.com/attachments/1459466706132013170/1537835945041207447/image.png?ex=6a831fd4&is=6a81ce54&hm=3d78d24d83e6424a84385de37ddc7a7e0a56761292241017166ab194e788657e",
+   "https://media.discordapp.net/attachments/1459466706132013170/1537835945041207447/image.png?ex=6a831fd4&is=6a81ce54&hm=3d78d24d83e6424a84385de37ddc7a7e0a56761292241017166ab194e788657e&=&format=webp&quality=lossless"
   ],
   "embeds": []
  },
@@ -5576,7 +5583,7 @@
   "author": "翻肚青蛙",
   "text": "inod连续很多天收盘守住了200日均",
   "reply": {
-   "author": "@sivir0037",
+   "author": "@我闻到了小牛蛋蛋的香味",
    "text": "inod连续很多天收盘守住了200日均"
   },
   "media": [],
@@ -5861,7 +5868,7 @@
  {
   "id": "1537840402135261214",
   "ts": "2026-08-14T15:08:43.562Z",
-  "author": "ISO",
+  "author": "ISO (我推的F师)利润走的太快就像龙卷风",
   "text": "似乎只有大盘45度30度涨的时候他们才能走的比较顺畅",
   "reply": null,
   "media": [],
@@ -5906,7 +5913,7 @@
  {
   "id": "1537842458191339571",
   "ts": "2026-08-14T15:16:53.764Z",
-  "author": "Frank",
+  "author": "CRDO价值投资者Frank",
   "text": "tsla是人类吗",
   "reply": null,
   "media": [],
@@ -5915,7 +5922,7 @@
  {
   "id": "1537842517234421760",
   "ts": "2026-08-14T15:17:07.841Z",
-  "author": "ISO",
+  "author": "ISO (我推的F师)利润走的太快就像龙卷风",
   "text": "空到归0",
   "reply": null,
   "media": [],
@@ -6602,7 +6609,7 @@
  {
   "id": "1537851996680355840",
   "ts": "2026-08-14T15:54:47.917Z",
-  "author": "美股韭菜",
+  "author": "ken",
   "text": "我也嚇到了",
   "reply": null,
   "media": [],
@@ -6659,7 +6666,7 @@
  {
   "id": "1537852549078589501",
   "ts": "2026-08-14T15:56:59.619Z",
-  "author": "脑瘫弟",
+  "author": "JerryG",
   "text": "be 这三根 日线是什么水平",
   "reply": null,
   "media": [],
@@ -6668,7 +6675,7 @@
  {
   "id": "1537852638979162313",
   "ts": "2026-08-14T15:57:21.053Z",
-  "author": "脑瘫弟",
+  "author": "JerryG",
   "text": "纯正的烧香拜佛 k",
   "reply": null,
   "media": [],
@@ -6707,7 +6714,7 @@
   "author": "Dave",
   "text": "be 这三根 日线是什么水平",
   "reply": {
-   "author": "@脑瘫弟",
+   "author": "@JerryG",
    "text": "be 这三根 日线是什么水平"
   },
   "media": [],

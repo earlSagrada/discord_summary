@@ -1,0 +1,13 @@
+{
+  "_note": "用户维护的宏观事件日期表（events.py 读取）。date=事件当天(UTC 日期)，命中即把环境标为不 clear。FOMC 用决议日(会议第二天)。每年更新一次；CPI/NFP/PPI 等经济数据发布已由 FRED 自动覆盖，这里主要放 FOMC 及自定义大事件。请每年核对官方日程后更新。",
+  "events": [
+    {"date": "2026-01-28", "name": "FOMC rate decision", "impact": "high"},
+    {"date": "2026-03-18", "name": "FOMC rate decision", "impact": "high"},
+    {"date": "2026-04-29", "name": "FOMC rate decision", "impact": "high"},
+    {"date": "2026-06-17", "name": "FOMC rate decision", "impact": "high"},
+    {"date": "2026-07-29", "name": "FOMC rate decision", "impact": "high"},
+    {"date": "2026-09-16", "name": "FOMC rate decision", "impact": "high"},
+    {"date": "2026-10-28", "name": "FOMC rate decision", "impact": "high"},
+    {"date": "2026-12-09", "name": "FOMC rate decision", "impact": "high"}
+  ]
+}

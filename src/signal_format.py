@@ -54,6 +54,96 @@ def _signal_line(sig: dict, metrics: dict) -> str:
     return f"Signal: {name}."
 
 
+_FLAG_TEXT = {
+    "extended": "The price is already {extension_pct}% above the entry.",
+    "stale_breakout": "The breakout is {days_since_breakout} days old.",
+    "earnings_consumed": "The earnings news is {days_since_earnings} days old.",
+    "stale_chat": "The group did not talk about it for {mention_age_min} minutes.",
+}
+
+
+def _price_vs_entry(price, entry) -> str:
+    """现价与入场位的关系，一句 STE。"""
+    if price is None or entry in (None, 0):
+        return ""
+    gap = (price / entry - 1) * 100
+    if gap >= 0:
+        near = "You are still near the trigger." if gap <= 0.5 else "You are late. Wait for a pullback."
+        return f"The price is {gap:.1f}% above the entry. {near}"
+    return f"The price is {-gap:.1f}% below the entry. The signal is not triggered yet."
+
+
+def _freshness_line(card: dict) -> str | None:
+    """把过期标签拼成一句"这信号可能已被 price in"的告警。"""
+    fr = card.get("freshness") or {}
+    flags = fr.get("flags") or []
+    if not flags:
+        return None
+    parts = []
+    for f in flags:
+        tmpl = _FLAG_TEXT.get(f)
+        if tmpl:
+            try:
+                parts.append(tmpl.format(**fr))
+            except (KeyError, ValueError):
+                pass
+    if not parts:
+        return None
+    return "  ⚠ Priced-in risk. " + " ".join(parts) + " Maybe the market already knows this."
+
+
+def _pct(x) -> str:
+    if x is None:
+        return "?"
+    try:
+        return f"{float(x) * 100:.0f}%"
+    except (TypeError, ValueError):
+        return str(x)
+
+
+def _has_options(opt: dict) -> bool:
+    keys = ("atm_iv", "iv_skew", "pc_oi", "pc_vol", "call_wall", "put_wall", "front_expiry")
+    return bool(opt) and (any(opt.get(k) is not None for k in keys) or bool(opt.get("unusual")))
+
+
+def _options_lines(card: dict) -> list[str]:
+    """期权只输出确认/风险上下文，不输出方向判断。"""
+    opt = card.get("options") or {}
+    if not _has_options(opt):
+        return []
+
+    parts = []
+    if opt.get("atm_iv") is not None:
+        parts.append(f"IV is {_pct(opt.get('atm_iv'))}.")
+    if opt.get("pc_oi") is not None:
+        parts.append(f"P/C OI is {_num(opt.get('pc_oi'))}.")
+    if opt.get("put_wall") is not None:
+        parts.append(f"Support (put wall) is near {_num(opt.get('put_wall'))}.")
+    if opt.get("call_wall") is not None:
+        parts.append(f"Resistance (call wall) is near {_num(opt.get('call_wall'))}.")
+    lines = ["  Options: " + " ".join(parts)] if parts else []
+
+    try:
+        import config
+        high_iv = opt.get("atm_iv") is not None and float(opt.get("atm_iv")) >= config.IV_HIGH
+    except (ImportError, TypeError, ValueError):
+        high_iv = False
+    if high_iv:
+        lines.append("  IV is high (options are expensive). The market maybe expects a big move already.")
+
+    for u in (opt.get("unusual") or [])[:3]:
+        strike = _num(u.get("strike"))
+        side = u.get("side") or "option"
+        vol = u.get("volume")
+        lines.append(f"  Unusual option volume at {strike} {side} ({vol} lots). "
+                     "This is new. The direction is not sure.")
+
+    flags = (card.get("freshness") or {}).get("flags") or []
+    if "capped" in flags:
+        lines.append("  Note: a big call wall is just above the entry. The breakout may stop there.")
+    return lines
+
+
 def _card_block(card: dict) -> str:
     ticker = card["ticker"]
     name = card.get("name") or ""
@@ -63,11 +153,26 @@ def _card_block(card: dict) -> str:
     head += f" · {_TIER.get(card.get('tier'), card.get('tier'))}"
 
     lines = [head]
-    lines.append(
-        f"  Price {_num(card.get('price'))}. Entry {_num(card.get('entry'))}. Stop {_num(card.get('stop'))}."
-    )
+    price, entry, stop, target = card.get("price"), card.get("entry"), card.get("stop"), card.get("target")
+    if entry is not None and stop is not None:
+        risk = (entry - stop) / entry * 100 if entry else None
+        lines.append(f"  Entry {_num(entry)} = the 20-day high (the breakout level). "
+                     f"Stop {_num(stop)} = {_num(risk)}% below entry (your maximum risk).")
+        rel = _price_vs_entry(price, entry)
+        lines.append(f"  Price {_num(price)}. {rel}".rstrip())
+        if target is not None:
+            lines.append(f"  Target near {_num(target)} (about 2 times the risk).")
+    else:
+        lines.append(f"  Price {_num(price)}. There is no clear entry level now.")
+
+    fresh = _freshness_line(card)
+    if fresh:
+        lines.append(fresh)
     if not card.get("env_clear", True):
-        lines.append("  Note: the market condition is not clear today.")
+        reason = card.get("env_reason") or "the market condition is not clear today"
+        lines.append(f"  Note: do not trade big today. Reason: {reason}.")
+    lines.extend(_options_lines(card))
+
     metrics = card.get("metrics", {})
     for sig in card.get("sig_objs", []):
         lines.append("  - " + _signal_line(sig, metrics))

@@ -115,7 +115,7 @@
 01:47 dnnth(不是已经鸿儒，就是等待鸿儒)
   https://mp.weixin.qq.com/s/tfoOAcwazhh8kz8NWDHUkQ
   [EMBED] 爱范儿独家｜谷歌不再追逐前沿， DeepMind 或大幅裁员 / 战略放弃虚荣心，GDM「去前沿化」不再押宝 Pro 模型，聚焦算力经济学。
-  [IMG#1]
+  [图片#1: [附件 0]]
 02:01 别跟ticker谈恋爱
   群内突然对币圈相关这么感兴趣
 02:12 dnnth(不是已经鸿儒，就是等待鸿儒)
@@ -126,7 +126,7 @@
   [EMBED] AB Kuai.Dong (@_FORAB) / 100% 超额现金返还给股东，预测未来几年利润还能实现不少增幅。
 
 不知道闪迪管理层疯没疯，但市场却先疯了。
-  [IMG#2]
+  [图片#2: [附件 2087925557480820791]]
 03:38 Hayes23
   ↩ 回复 @Tunemah:「frank有买snxx吗」
   frank有买snxx吗
@@ -207,8 +207,28 @@
 06:31 半导体受害者｜NBIS
   我猜有bobo
 06:31 Helen
-  [IMG#3]
-  [IMG#4]
+  [图片#3: Pathfinder @Pathusa：反弹应该接近了尾声，赚了钱的落袋为安吧。
+     
+     #Bitget 买美股：秒级入场，丝滑交易
+     
+     23:46·2026/8/13·1.2万次查看
+     
+     Telent Tom @RysternT...·14小时
+     回踩应该是有的，但是反弹应该不是，毕竟指数创新高
+     
+     Pathfinder @Pathu...·13小时
+     不看指数了，重点看个股。]
+  [图片#4: Pathfinder @Pathusa：反弹应该接近了尾声，赚了钱的落袋为安吧。
+     
+     #Bitget 买美股：秒级入场，丝滑交易
+     
+     23:46·2026/8/13·1.2万次查看
+     
+     Telent Tom @RysternT...·14小时
+     回踩应该是有的，但是反弹应该不是，毕竟指数创新高
+     
+     Pathfinder @Pathu...·13小时
+     不看指数了，重点看个股。]
 06:31 Helen
   比如这个
 06:32 Inflection
@@ -299,15 +319,15 @@ AI...
   :narump:
 06:55 羽中
   昨天就走了1/5
-06:55 原神启动
+06:55 做总统的朋友
   黄色闪光
 06:55 羽中
   :liuhanjensen: 保守了
-06:55 原神启动
+06:55 做总统的朋友
   敏捷交易
-06:56 原神启动
+06:56 做总统的朋友
   换句话说
-06:56 原神启动
+06:56 做总统的朋友
   早谢
 06:56 羽中
   每天上班等着就下班
@@ -345,6 +365,7 @@ AI...
   上不去150就真双顶了
 07:59 半导体受害者｜NBIS
   https://x.com/corsica267/status/2087970339917811955?s=46&t=wD9rA5JvOhUaFcG0hcJ7vA
+  [EMBED] 本杰明乌萨奇 (@Corsica267) / 我柜子动了我不玩了
 07:59 半导体受害者｜NBIS
   ↩ 回复 @羽中:「他最新的说有机会空:jensenhuang:」
   他最新的说有机会空:jensenhuang:
@@ -412,8 +433,8 @@ AI...
 08:07 烦恼风
   tsla今天可能也要补缺口
 08:07 烦恼风
-  ↩ 回复 @Inflection:「我跟正确的分析框架，如果分析师的分析框架不对就要检讨他的分析框架」
-  我跟正确的分析框架，如果分析师的分析框架不对就要检讨他的分析框架
+  ↩ 回复 :「Message could not be loaded」
+  哥你都说了只看别人分析的结果
 08:07 烦恼风
   了
 08:08 半导体受害者｜NBIS
@@ -494,7 +515,7 @@ AI...
   🐸
 08:13 羽中
   蛙哥，如果没高开呢:jensenhuang:
-08:13 做总统的朋友
+08:13 原神启动
   🐉🐸
 08:13 羽中
   幸好没梭？
@@ -649,8 +670,32 @@ AI...
   加不加看爹脸色
 09:10 tim2047
   COHR啥情况？
-  [IMG#5]
-  [IMG#6]
+  [图片#5: 这篇文章是来自科技投资媒体Irrational Analysis，主要对沿通信巨头Coherent 2026财年第四季度的财报进行了深入分析，同时极力看好其竞争对手Lumentum。
+     
+     核心观点
+     - Coherent掌握的财数数据（无其是毛利率扩张演流）根本原因是CPO（共封装光学）激光器良率极低且技术落后。相比之下，Lumentum凭借卓越的激光器重新设计，实现了高良率和极高的利率（约80%）。
+     
+     主要论据与技术分析
+     - 抨击Coherent的技术线路：作者强烈批评Coherent在VCSEL CPO/NPO上采用200G PAM4技术的决定，认为这将导致较低的可靠性问题（无法通过GR-468标准），并且因为驱动和前向纠错（FEC）需求，会大大降低能效。
+     - 揭盖良率问题：财报电话会议上，分析师们在试图弄清Coherent利用率低迷的原因。管理层将其归咎于"新发展产品组合占比提高"，但作者认为真正的内幕是CPO激光器良率极低问题。
+     - 6英寸InP晶圆稼率设定：作者提出了种猜测：Coherent的低良率可能完全是自身的错，而是因为当前6英寸InP（砷化镓）晶圆供应链（如Sumitomo）的均匀性差。
+     - Lumentum的数据优势：作者详细展示并赞美了Lumentum公开的CPO激光器技术数据。Lumentum的激光器在转换效率下具有极高的电光转换效率（WPE），且相对强度噪声（RIN）低于-155dBc/Hz，远超行业标准-145dBc/Hz。
+     
+     总结论
+     作者在文章末尾向Coherent的管理层（Jim Anderson）发起挑战，要]
+  [图片#6: 这篇文章是来自科技投资媒体Irrational Analysis，主要对沿通信巨头Coherent 2026财年第四季度的财报进行了深入分析，同时极力看好其竞争对手Lumentum。
+     
+     核心观点
+     - Coherent掌握的财数数据（无其是毛利率扩张演流）根本原因是CPO（共封装光学）激光器良率极低且技术落后。相比之下，Lumentum凭借卓越的激光器重新设计，实现了高良率和极高的利率（约80%）。
+     
+     主要论据与技术分析
+     - 抨击Coherent的技术线路：作者强烈批评Coherent在VCSEL CPO/NPO上采用200G PAM4技术的决定，认为这将导致较低的可靠性问题（无法通过GR-468标准），并且因为驱动和前向纠错（FEC）需求，会大大降低能效。
+     - 揭盖良率问题：财报电话会议上，分析师们在试图弄清Coherent利用率低迷的原因。管理层将其归咎于"新发展产品组合占比提高"，但作者认为真正的内幕是CPO激光器良率极低问题。
+     - 6英寸InP晶圆稼率设定：作者提出了种猜测：Coherent的低良率可能完全是自身的错，而是因为当前6英寸InP（砷化镓）晶圆供应链（如Sumitomo）的均匀性差。
+     - Lumentum的数据优势：作者详细展示并赞美了Lumentum公开的CPO激光器技术数据。Lumentum的激光器在转换效率下具有极高的电光转换效率（WPE），且相对强度噪声（RIN）低于-155dBc/Hz，远超行业标准-145dBc/Hz。
+     
+     总结论
+     作者在文章末尾向Coherent的管理层（Jim Anderson）发起挑战，要]
 09:10 tim2047
   还能夹吗？
 10:34 Inflection
@@ -1267,15 +1312,15 @@ AI...
   我太激動了
 14:49 翻肚青蛙
   應該要低/頂部 留籌碼進再對
-14:50 sivir0037
+14:50 我闻到了小牛蛋蛋的香味
   inod连续很多天收盘守住了200日均
 14:51 翻肚青蛙
-  [IMG#7]
-  [IMG#8]
+  [图片#7: 该图为某股票（ID: NASDAQ）的K线走势图，包含多个技术指标。图表显示近期价格从高位66.18开始下跌，经历明显的恐慌抛售阶段（标注PANIC），目前在58-60区间震荡。图中标注有多个交易信号：绿色三角形表示买入点，绿色方块表示BUY信号，红色菱形表示SELL信号。右侧面板显示多个价格目标位：空头止损82.67、多头止损86.77、多头止盈57.52、空头止盈46.59等。技术面显示上升趋势已破位，下行趋势明显，多条均线呈空头排列。]
+  [图片#8: 该图为某股票（ID: NASDAQ）的K线走势图，包含多个技术指标。图表显示近期价格从高位66.18开始下跌，经历明显的恐慌抛售阶段（标注PANIC），目前在58-60区间震荡。图中标注有多个交易信号：绿色三角形表示买入点，绿色方块表示BUY信号，红色菱形表示SELL信号。右侧面板显示多个价格目标位：空头止损82.67、多头止损86.77、多头止盈57.52、空头止盈46.59等。技术面显示上升趋势已破位，下行趋势明显，多条均线呈空头排列。]
 14:51 翻肚青蛙
   總之就 跌破61損
 14:51 翻肚青蛙
-  ↩ 回复 @sivir0037:「inod连续很多天收盘守住了200日均」
+  ↩ 回复 @我闻到了小牛蛋蛋的香味:「inod连续很多天收盘守住了200日均」
   inod连续很多天收盘守住了200日均
 14:51 翻肚青蛙
   現在非常棒!
@@ -1344,7 +1389,7 @@ AI...
 15:08 pinya
   ↩ 回复 @whz20024117:「这才是日内冲高回落典范」
   这才是日内冲高回落典范
-15:08 ISO
+15:08 ISO (我推的F师)利润走的太快就像龙卷风
   似乎只有大盘45度30度涨的时候他们才能走的比较顺畅
 15:09 whz20024117
   都是些血包
@@ -1354,9 +1399,9 @@ AI...
   goog就扛单价值投资了，这笔基本上ema200就是阶段底…
 15:09 铁窗泪
   iv又更低了
-15:16 Frank
+15:16 CRDO价值投资者Frank
   tsla是人类吗
-15:17 ISO
+15:17 ISO (我推的F师)利润走的太快就像龙卷风
   空到归0
 15:17 whz20024117
   你们不觉得。。
@@ -1509,7 +1554,7 @@ AI...
   嚇醒了
 15:54 NeuralFeels
   哈哈，我猜有人真准备清仓了
-15:54 美股韭菜
+15:54 ken
   我也嚇到了
 15:54 whz20024117
   太搞了
@@ -1522,9 +1567,9 @@ AI...
 15:56 Cai
   ↩ 回复 @whz20024117:「群友们如果连续几天没法操作怎么办？」
   群友们如果连续几天没法操作怎么办？
-15:56 脑瘫弟
+15:56 JerryG
   be 这三根 日线是什么水平
-15:57 脑瘫弟
+15:57 JerryG
   纯正的烧香拜佛 k
 15:57 huanying007
   三炷香啊
@@ -1533,7 +1578,7 @@ AI...
 15:57 半导体受害者｜NBIS
   :jensenhuang:
 15:58 Dave
-  ↩ 回复 @脑瘫弟:「be 这三根 日线是什么水平」
+  ↩ 回复 @JerryG:「be 这三根 日线是什么水平」
   be 这三根 日线是什么水平
 15:59 whz20024117
   be和simc
@@ -1799,8 +1844,34 @@ AI...
 18:07 Sephirotheca
   avgo跌太狠了
 18:09 羽中
-  [IMG#9]
-  [IMG#10]
+  [图片#9: 3X Long Labubu @labubu_trader
+     
+     这就是为什么 $AVGO 今天吓得屎滚尿流
+     
+     Sean @sean_______ ·1小时
+     Semianalysis: "市场传言显示，$GOOG 正在与 $AMD 合作开发 v10 代 TPU 项目。AMD 的参与标是其首次真正涉足定制 AI ASIC 项目，尽管它已拥有定制硅团队。AMD 在先进封装和 SoIC 方向拥有强大的知识产权。此外，鉴于 Google 及其客户已推动...
+     
+     AVGO TPU Downward Revision
+     We are seeing lower TPUv10 in 2H26 than previous expectations. 2026 CoWoS output for TPU v7x (Ironwood) is reduced by ~32%, reducing 2026 unit production by ~500k from 3.2m to 2.7m. TPU v8 (Sunfish) is also reduced by ~5k wafers, reducing 2026 unit production by ~80k. Ironwood upstream output new peak is 250k with a slight decline in run-rate in 2H, versus our prior forecast of a continued ramp from 2026 onwards. We believe this reduction is supply related and due to challenges ramping CoWoS S. This brings total Broadcom CoWoS output to 215k wafers from 2050k previously.
+     
+     For 2027, we also see lower TPU output than our previous expectation of 6mn units of TPU 7 and TPU8i. This is driven by greater allocation towards other customers, with total Broadcom CoWoS at ~460k wafers. Most notably there are 55k wafers (which is equivalent to 850k units) for TPU 8i (Sunfish) allocated to NVIDIA in 2027. However, this remains in flux as Meta is known for abandoning orders, as we saw in May, where Meta agreed to cut its own Broadcom production allocation to support greater TPU supply for Google in exchange for access to TPU compute. This could play out again if, if Meta abandons its allocation, this could be taken up by TPU. We also see slightly more allocation for OAi Jalapeno's ASIC. We will provide a more detailed model update in the coming weeks.
+     
+     AMD TPU Involvement
+     Market chatter suggests Google is working with AMD on a TPU project]
+  [图片#10: 3X Long Labubu @labubu_trader
+     
+     这就是为什么 $AVGO 今天吓得屎滚尿流
+     
+     Sean @sean_______ ·1小时
+     Semianalysis: "市场传言显示，$GOOG 正在与 $AMD 合作开发 v10 代 TPU 项目。AMD 的参与标是其首次真正涉足定制 AI ASIC 项目，尽管它已拥有定制硅团队。AMD 在先进封装和 SoIC 方向拥有强大的知识产权。此外，鉴于 Google 及其客户已推动...
+     
+     AVGO TPU Downward Revision
+     We are seeing lower TPUv10 in 2H26 than previous expectations. 2026 CoWoS output for TPU v7x (Ironwood) is reduced by ~32%, reducing 2026 unit production by ~500k from 3.2m to 2.7m. TPU v8 (Sunfish) is also reduced by ~5k wafers, reducing 2026 unit production by ~80k. Ironwood upstream output new peak is 250k with a slight decline in run-rate in 2H, versus our prior forecast of a continued ramp from 2026 onwards. We believe this reduction is supply related and due to challenges ramping CoWoS S. This brings total Broadcom CoWoS output to 215k wafers from 2050k previously.
+     
+     For 2027, we also see lower TPU output than our previous expectation of 6mn units of TPU 7 and TPU8i. This is driven by greater allocation towards other customers, with total Broadcom CoWoS at ~460k wafers. Most notably there are 55k wafers (which is equivalent to 850k units) for TPU 8i (Sunfish) allocated to NVIDIA in 2027. However, this remains in flux as Meta is known for abandoning orders, as we saw in May, where Meta agreed to cut its own Broadcom production allocation to support greater TPU supply for Google in exchange for access to TPU compute. This could play out again if, if Meta abandons its allocation, this could be taken up by TPU. We also see slightly more allocation for OAi Jalapeno's ASIC. We will provide a more detailed model update in the coming weeks.
+     
+     AMD TPU Involvement
+     Market chatter suggests Google is working with AMD on a TPU project]
 18:09 羽中
   这个吧
 18:10 grove
@@ -1864,7 +1935,7 @@ AI...
 现在cpu和gpu的配置需求是1/8，
 随着各AI大模型公司下场AI代理，代理需求催生的高端cpu需求会在2-3个季度内快递被爆拉到1/1。八倍的需求提升，而高端cpu的产能完全不可能在最近的2个季度内实现产能8倍提升。
 c...
-  [IMG#11]
+  [图片#11: [附件 HPr2MggbwAAfX0x.jpg:large]]
 18:16 半导体受害者｜NBIS
   你比burry猛
 18:16 whz20024117
@@ -2240,10 +2311,56 @@ c...
 19:38 NeuralFeels
   以前半夜突然就冒出来了
 19:39 whz20024117
-  [IMG#12]
-  [IMG#13]
-  [IMG#14]
-  [IMG#15]
+  [图片#12: CRDO价值投资者Frank
+     7/30/26, 7:50 AM
+     
+     看着你们就烦一群韭菜
+     
+     反应统计：笑哭 27次，用户头像 8次]
+  [图片#13: 聊天记录截图。
+     
+     发言人：CRDO价值投资者Frank
+     时间：Yesterday at 9:00 AM
+     
+     内容：
+     "你们就是一群韭菜
+     
+     要认清楚这个事实"
+     
+     下方显示的反应统计：
+     - 青蛙emoji：6
+     - 金牌emoji：4
+     - 对勾emoji：8
+     - 古人头像emoji：11
+     - 喇叭emoji：8
+     - "不走!"文字：4
+     - 眼镜男头像emoji：2
+     - 哭脸emoji：2]
+  [图片#14: CRDO价值投资者Frank
+     7/30/26, 7:50 AM
+     
+     看着你们就烦一群韭菜
+     
+     反应统计：笑哭 27次，用户头像 8次]
+  [图片#15: 聊天记录截图。
+     
+     发言人：CRDO价值投资者Frank
+     时间：Yesterday at 9:00 AM
+     
+     内容：
+     "你们就是一群韭菜
+     
+     要认清楚这个事实"
+     
+     下方显示的反应统计：
+     - 青蛙emoji：6
+     - 金牌emoji：4
+     - 对勾emoji：8
+     - 古人头像emoji：11
+     - 喇叭emoji：8
+     - "不走!"文字：4
+     - 眼镜男头像emoji：2
+     - 哭脸emoji：2]
 19:39 羽中
   挺好的，知道操作自己心里有数就行。就是寂寞了点🥹
 19:40 羽中
@@ -2298,8 +2415,8 @@ c...
   这hood怎么这么垃圾啊
 20:04 jaywn
   53.42万？？
-  [IMG#16]
-  [IMG#17]
+  [图片#16: 同花顺App闪迪(SNDK)股票实时行情图表。标的为SNDK(美国上市公司)，显示盘中K线走势。时间范围为日K级别，当前时间16:02(美东时间)。最新价格1641.110，较前收盘上涨113.000点(7.39%)。高1667.060、低1565.000、昨收1646.930。成交量66.44万手，现手309。实时盘面显示大量买卖挂单，价格在1640-1641区间密集成交。K线图显示股价从开盘后大幅上扬，在高位1667附近遇阻回落，目前在1641位置。右侧实时成交明细显示03:59-04:00时间段内频繁成交，成交价格主要集中在1640.590-1641.440区间，成交手数从几十手到数千手不等。整体呈现活跃成交态势。]
+  [图片#17: 同花顺App闪迪(SNDK)股票实时行情图表。标的为SNDK(美国上市公司)，显示盘中K线走势。时间范围为日K级别，当前时间16:02(美东时间)。最新价格1641.110，较前收盘上涨113.000点(7.39%)。高1667.060、低1565.000、昨收1646.930。成交量66.44万手，现手309。实时盘面显示大量买卖挂单，价格在1640-1641区间密集成交。K线图显示股价从开盘后大幅上扬，在高位1667附近遇阻回落，目前在1641位置。右侧实时成交明细显示03:59-04:00时间段内频繁成交，成交价格主要集中在1640.590-1641.440区间，成交手数从几十手到数千手不等。整体呈现活跃成交态势。]
 20:05 whz20024117
   我靠又咋啦
 20:06 whz20024117
@@ -2388,8 +2505,18 @@ c...
 20:13 翻肚青蛙
   買2x 好
 20:13 Yi
-  [IMG#18]
-  [IMG#19]
+  [图片#18: Trump says he'll declare Strait of Hormuz a US territory after defeating Iran
+     
+     By Steven Nelson
+     Published Aug. 14, 2026, 4:08 p.m. ET
+     
+     Today's Video Headlines]
+  [图片#19: Trump says he'll declare Strait of Hormuz a US territory after defeating Iran
+     
+     By Steven Nelson
+     Published Aug. 14, 2026, 4:08 p.m. ET
+     
+     Today's Video Headlines]
 20:13 翻肚青蛙
   可以長坐
 20:13 Yi
@@ -2433,15 +2560,59 @@ c...
 21:51 uuuuuuurrrr
   迪哥真是无敌了 :liuhanjensen:
 21:52 Steven Zhao(tzhao33)
-  [IMG#20]
-  [IMG#21]
+  [图片#20: FinancialJuice @financialjuice
+     
+     Jane Street executives to employees: July was a poor month, trading revenue turned negative for first time since 2016
+     
+     05:50 · 8/15/26 · 8.4K Views
+     
+     ---
+     
+     FinancialJuice @financialjuice · 44m
+     
+     Iran's FM Aragchi: Qatar, Pakistan relay messages with Iran, but this does not indicate talks - ISNA]
+  [图片#21: FinancialJuice @financialjuice
+     
+     Jane Street executives to employees: July was a poor month, trading revenue turned negative for first time since 2016
+     
+     05:50 · 8/15/26 · 8.4K Views
+     
+     ---
+     
+     FinancialJuice @financialjuice · 44m
+     
+     Iran's FM Aragchi: Qatar, Pakistan relay messages with Iran, but this does not indicate talks - ISNA]
 21:52 Steven Zhao(tzhao33)
   我和简街旗鼓相当了
 21:54 我闻到了小牛蛋蛋的香味
   KEEL盘后拉菲 @pinya
 22:16 我爱斯密达
-  [IMG#22]
-  [IMG#23]
+  [图片#22: Jimmy狐狸 @jimmyhuli · 2小时
+     感谢空头的弹药，这一轮neoclouds暴涨有你们的功劳
+     
+     Mike Alfred @mikealfred
+     记者们打电话来咨询一个传闻，说几十名伯里Substack订阅者在"夹难性"的NBIS空头头寸被清算后，正准备提交破产中申请。唉。难怪股票在飙升。很多人腾请第11章律师进行空头回补。疯了
+     
+     Jimmy狐狸 @jimmyhuli · 1天
+     $NBIS单日暴涨34%，一部分弹药就来自于空头回补
+     
+     Neoclouds是整个纳斯达克里，被做空最多的板块，没有之一……
+     
+     Nebius Group NV
+     NBIS $277.68 +8.88%]
+  [图片#23: Jimmy狐狸 @jimmyhuli · 2小时
+     感谢空头的弹药，这一轮neoclouds暴涨有你们的功劳
+     
+     Mike Alfred @mikealfred
+     记者们打电话来咨询一个传闻，说几十名伯里Substack订阅者在"夹难性"的NBIS空头头寸被清算后，正准备提交破产中申请。唉。难怪股票在飙升。很多人腾请第11章律师进行空头回补。疯了
+     
+     Jimmy狐狸 @jimmyhuli · 1天
+     $NBIS单日暴涨34%，一部分弹药就来自于空头回补
+     
+     Neoclouds是整个纳斯达克里，被做空最多的板块，没有之一……
+     
+     Nebius Group NV
+     NBIS $277.68 +8.88%]
 22:57 pinya
   ↩ 回复 @我闻到了小牛蛋蛋的香味:「KEEL盘后拉菲 @pinya」
   KEEL盘后拉菲 @pinya
@@ -2451,28 +2622,3 @@ c...
   金毛变成阿Q了
 23:55 dnnth(不是已经鸿儒，就是等待鸿儒)
   我也可以宣布火星是我的
-
-===== 图片清单 =====
-IMG#1	https://mmbiz.qpic.cn/sz_mmbiz_jpg/fc90sFPPBCML1WrEWKh7XicovicRCADyKno9lIBmt5su62TtAficjwLpgPCRGDmWhUCQTOpCDnZO6GtHR1ccJgjTgKXDibjBpCzvdcwzyznDCus/0?wx_fmt=jpeg
-IMG#2	https://jf.x.com/images/media-preview/2087925557480820791
-IMG#3	https://cdn.discordapp.com/attachments/1459466706132013170/1537710333043408917/IMG_9096.png?ex=6a835398&is=6a820218&hm=073ea60b84df331dd8791957e5ab1e558e2664a734bbecddaa432b3ee916c5ac
-IMG#4	https://media.discordapp.net/attachments/1459466706132013170/1537710333043408917/IMG_9096.png?ex=6a835398&is=6a820218&hm=073ea60b84df331dd8791957e5ab1e558e2664a734bbecddaa432b3ee916c5ac&=&format=webp&quality=lossless
-IMG#5	https://cdn.discordapp.com/attachments/1459466706132013170/1537750176779731054/image.png?ex=6a82cff4&is=6a817e74&hm=2a5fd66c9bf3845f347d66e044b8178f52bd56b1ee43d4aefda1a7f52cc83ff5
-IMG#6	https://media.discordapp.net/attachments/1459466706132013170/1537750176779731054/image.png?ex=6a82cff4&is=6a817e74&hm=2a5fd66c9bf3845f347d66e044b8178f52bd56b1ee43d4aefda1a7f52cc83ff5&=&format=webp&quality=lossless
-IMG#7	https://cdn.discordapp.com/attachments/1459466706132013170/1537835945041207447/image.png?ex=6a807cd4&is=6a7f2b54&hm=ffb8a2910f375206ab1579694d851a2106035753e526f99ed2a5c7c1de3553dc
-IMG#8	https://media.discordapp.net/attachments/1459466706132013170/1537835945041207447/image.png?ex=6a807cd4&is=6a7f2b54&hm=ffb8a2910f375206ab1579694d851a2106035753e526f99ed2a5c7c1de3553dc&=&format=webp&quality=lossless
-IMG#9	https://cdn.discordapp.com/attachments/1459466706132013170/1537885896047857704/Screenshot_2026-08-15-02-09-20-661_com.twitter.android.jpg?ex=6a834e5a&is=6a81fcda&hm=5b0819b17c2ca87f1d89abed77f9e8973b54d277e292d03166e954ed5904d861
-IMG#10	https://media.discordapp.net/attachments/1459466706132013170/1537885896047857704/Screenshot_2026-08-15-02-09-20-661_com.twitter.android.jpg?ex=6a834e5a&is=6a81fcda&hm=5b0819b17c2ca87f1d89abed77f9e8973b54d277e292d03166e954ed5904d861&=&format=webp
-IMG#11	https://pbs.twimg.com/media/HPr2MggbwAAfX0x.jpg:large
-IMG#12	https://cdn.discordapp.com/attachments/1459466706132013170/1537908425307197510/4FE18BD1-D1D1-4627-BB5B-8F17A5D0E320.jpg?ex=6a82ba95&is=6a816915&hm=76449a87cc3c30183ed7aa6407927736e71d793036477c8ef2b2f9c837374819
-IMG#13	https://cdn.discordapp.com/attachments/1459466706132013170/1537908425785217085/89A03B90-5603-497A-8954-68B4AA725DD2.jpg?ex=6a82ba95&is=6a816915&hm=efa9da24cf361ee7211cd0cc5f30028c50c56e94304a00d201362821b55240a5
-IMG#14	https://media.discordapp.net/attachments/1459466706132013170/1537908425307197510/4FE18BD1-D1D1-4627-BB5B-8F17A5D0E320.jpg?ex=6a82ba95&is=6a816915&hm=76449a87cc3c30183ed7aa6407927736e71d793036477c8ef2b2f9c837374819&=&format=webp
-IMG#15	https://media.discordapp.net/attachments/1459466706132013170/1537908425785217085/89A03B90-5603-497A-8954-68B4AA725DD2.jpg?ex=6a82ba95&is=6a816915&hm=efa9da24cf361ee7211cd0cc5f30028c50c56e94304a00d201362821b55240a5&=&format=webp
-IMG#16	https://cdn.discordapp.com/attachments/1459466706132013170/1537914881234440242/7721E74D-D0B1-48FB-A886-940A64B9EC80.jpg?ex=6a82c098&is=6a816f18&hm=ca6aad01bb43cf95d3b0769a4b5078d226f719dce193651a8af43bdb5f2d1b94
-IMG#17	https://media.discordapp.net/attachments/1459466706132013170/1537914881234440242/7721E74D-D0B1-48FB-A886-940A64B9EC80.jpg?ex=6a82c098&is=6a816f18&hm=ca6aad01bb43cf95d3b0769a4b5078d226f719dce193651a8af43bdb5f2d1b94&=&format=webp
-IMG#18	https://cdn.discordapp.com/attachments/1459466706132013170/1537917067263475774/36ac2e74-f385-4e8c-8762-ccf0a4dbb6a8.png?ex=6a82c2a1&is=6a817121&hm=9d373d5c1dd033c5b68d2f82085c44ec5eb2042bcce51c2b8e18a5e4f518a2a3
-IMG#19	https://media.discordapp.net/attachments/1459466706132013170/1537917067263475774/36ac2e74-f385-4e8c-8762-ccf0a4dbb6a8.png?ex=6a82c2a1&is=6a817121&hm=9d373d5c1dd033c5b68d2f82085c44ec5eb2042bcce51c2b8e18a5e4f518a2a3&=&format=webp&quality=lossless
-IMG#20	https://cdn.discordapp.com/attachments/1459466706132013170/1537941929742958622/IMG_5128.png?ex=6a82d9c9&is=6a818849&hm=4c58bc09139b3bb21505501ebf2594f26adb69255ebd0ff78b256f10b1cde466
-IMG#21	https://media.discordapp.net/attachments/1459466706132013170/1537941929742958622/IMG_5128.png?ex=6a82d9c9&is=6a818849&hm=4c58bc09139b3bb21505501ebf2594f26adb69255ebd0ff78b256f10b1cde466&=&format=webp&quality=lossless
-IMG#22	https://cdn.discordapp.com/attachments/1459466706132013170/1537948051824443402/IMG_3283.png?ex=6a82df7d&is=6a818dfd&hm=656665bf769949ca08f2a6df1188eedf525ab31bea64e5a01a0a872441fe8d5f
-IMG#23	https://media.discordapp.net/attachments/1459466706132013170/1537948051824443402/IMG_3283.png?ex=6a82df7d&is=6a818dfd&hm=656665bf769949ca08f2a6df1188eedf525ab31bea64e5a01a0a872441fe8d5f&=&format=webp&quality=lossless

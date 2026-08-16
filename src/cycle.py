@@ -23,6 +23,7 @@ import traceback
 from datetime import datetime, timedelta, timezone
 
 import config
+import events
 import pulse
 import signal_format
 import signals as S
@@ -226,14 +227,28 @@ def run_once(args) -> int:
     full_text = "\n".join(texts)
     syms, mentions, unknown = S.resolve_from_text(full_text, all_=not args.focus_only)
     syms = syms[: args.limit]
+
+    # 5a) 宏观事件：自动判断今天是否大宏观日（--event-today 仍可手动强制）
+    ev_names = events.event_names()
+    event_today = args.event_today or bool(ev_names)
+    if ev_names:
+        log(f"今日宏观事件：{', '.join(ev_names)} → 环境标为不 clear")
+
+    # 5b) 每个标的最后一次被提及的时间 → 标"聊天已不热"
+    import extract
+    mention_times = extract.last_mention_times(texts)
+
     cards = []
     if syms:
         cards, run_id = S.analyze(
             syms,
-            event_today=args.event_today,
+            event_today=event_today,
             save=not (args.no_save or args.dry_run),
             source_label=f"cycle:{today_str(now)}",
             mentions=mentions,
+            now=anchor,
+            mention_times=mention_times,
+            event_names=ev_names,
         )
     ste_signals = signal_format.format_cards(cards, anchor)
 
@@ -247,6 +262,8 @@ def run_once(args) -> int:
         header = f"🕒 **Trading pulse — {stamp}**"
         if low_activity:
             header += f"\n_Low activity: only {n_msg} new messages in the last {args.minutes} minutes._"
+    if ev_names:
+        header += f"\n_Macro today: {', '.join(ev_names)}. The market is not clear. Trade small._"
     body_parts = [header]
     if brief:
         body_parts.append(brief)
@@ -274,7 +291,8 @@ def main() -> None:
     ap.add_argument("--limit", type=int, default=20, help="最多打分多少个标的")
     ap.add_argument("--focus-only", action="store_true",
                     help="只打分重点 ETP/ETF（默认连个股一起，信号更多）")
-    ap.add_argument("--event-today", action="store_true", help="大宏观事件当天：环境不clear")
+    ap.add_argument("--event-today", action="store_true",
+                    help="强制把今天标为大宏观日（events.py 已自动判断，这是手动覆盖）")
     ap.add_argument("--model", default=pulse.DEFAULT_MODEL, help="脉搏简报用的模型")
     ap.add_argument("--dry-run", action="store_true", help="不推送、不入库，打印到屏幕")
     ap.add_argument("--no-watch", action="store_true", help="跳过 watcher（用已有 merged 文件）")

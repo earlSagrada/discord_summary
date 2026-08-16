@@ -64,4 +64,39 @@ def compute_levels(daily: pd.DataFrame, intraday: pd.DataFrame | None = None) ->
         levels["round_levels"] = _round_levels(last)
         if levels["avg_vol_20"] and levels["today_vol"]:
             levels["vol_ratio"] = _f(levels["today_vol"] / levels["avg_vol_20"])
+    days, move = breakout_age(daily)
+    levels["days_since_breakout"] = days
+    levels["move_since_breakout"] = move
     return levels
+
+
+def breakout_age(daily: pd.DataFrame) -> tuple[int | None, float | None]:
+    """现价站上"20日高"这个突破是几天前发生的，以及从突破日至今涨了多少。
+
+    返回 (days_since_breakout, move_since_breakout_pct)：
+      - 今天不在突破状态（收盘 ≤ 前20日高）→ (None, None)
+      - 今天刚破 → (0, ~0)；连续站上 N 天 → (N-1, 从最早突破日至今%)
+    用于判断信号是否"新鲜"：旧突破多半已被市场 price in（见 signals.py 降级规则）。
+    """
+    if daily is None or daily.empty:
+        return None, None
+    daily = daily[daily["Close"].notna()]
+    close = daily["Close"]
+    high = daily["High"]
+    n = len(close)
+    if n < 22:
+        return None, None
+    run = 0
+    base_close = None
+    for i in range(n - 1, 19, -1):  # 需要 i 前面有 20 根 bar
+        prior_high = high.iloc[i - 20:i].max()
+        if close.iloc[i] > prior_high:
+            run += 1
+            base_close = float(close.iloc[i])  # 迭代到最后 = 最早那根突破日的收盘
+        else:
+            break
+    if run == 0:
+        return None, None
+    last = float(close.iloc[-1])
+    move = (last / base_close - 1) * 100 if base_close else None
+    return run - 1, _f(move)

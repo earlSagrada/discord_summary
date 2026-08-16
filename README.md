@@ -27,18 +27,24 @@ src/          Python 管线
   config.py       集中路径 + .env 加载（所有脚本 import 它）
   prompts.py      读取 prompts/ 里的 prompt 文件（一个用途一份）
   enrich_images.py / digest.py / watch_inbox.py   聊天入库与日报
-  pulse.py        脉搏简报：切最近 N 分钟窗口 → Claude → STE 英语简报
+  pulse.py        脉搏简报：切最近 N 分钟窗口 → Claude → STE 英语简报；支持 --last/--from/--to 历史区间
   discord_post.py 把消息 POST 到 Discord 频道 Webhook（自动分片）
   signal_format.py 信号卡 → ASD-STE100 简化技术英语（静态模板）
   cycle.py        编排器：入库→脉搏简报→信号→推送（挂计划任务每 15min）
   tickers.py      标的宇宙 + 黑话/别名词典（ETP/ETF 为重点）
-  extract.py      从聊天文本抽 ticker（正则 + 词典）
+  extract.py      从聊天文本抽 ticker（正则 + 词典）；last_mention_times() 供"聊天已不热"判定
   market.py       yfinance 行情 / Finnhub 财报（带每日缓存）
-  levels.py       关键位计算（前高低 / 均线 / VWAP / 量比）
-  store.py        SQLite 落库（signals.db）
-  signals.py      信号打分（analyze() 可被 cycle 复用）→ 信号卡 + 存库
+  options.py      yfinance 期权链 → IV / put·call wall / P·C 比 / 异常量（B 档确认，只提示不给方向）
+  events.py       宏观事件日历：FRED 发布日期 + 静态 FOMC 表 + Finnhub/FMP → 自动 --event-today
+  levels.py       关键位计算（前高低 / 均线 / VWAP / 量比）+ breakout_age（突破几天前发生）
+  store.py        SQLite 落库（signals.db）+ outcomes 回填/回测查询
+  signals.py      信号打分（analyze() 可被 cycle 复用）→ 信号卡 + 存库；含新鲜度/priced-in 降级
+  backtest.py     回填 outcomes（T+1/3/5 走势）+ 胜率统计 + 调参建议（模块 6 数据闭环）
+  review.py       周期复盘：有价值发言人 + 成功方法 + 信号校准 → 报告文件 + Discord 摘要
 prompts/      喂给 AI 的 prompt（一个用途一份，改措辞不用动代码）
-  pulse_summary.md  脉搏简报（STE 英语）
+  pulse_summary.md  脉搏简报（STE 英语，含催化分级 + priced-in 检查 + KOL 噪音标注）
+  weekly_review.md  周期复盘（中文）
+  vip_speakers.txt  重点发言人名单（review.py 会往 vip_suggestions.md 提增删建议）
   digest_system.md / digest_user.md / digest_merge.md  日报 prompt
 userscript/   discord-digest-exporter.user.js（浏览器里跑，支持多频道轮流采集）
 data/         运行时数据（inbox/ cache/ market_cache/ signals.db 不入库）
@@ -46,10 +52,11 @@ data/         运行时数据（inbox/ cache/ market_cache/ signals.db 不入库
   cache/        图片哈希缓存
   chats_by_date/  按日 + 按频道整理：<日>/<频道>/merged.enriched.txt
   chat_frank/     Frank 频道导出
-  market_cache/   yfinance 行情当日缓存（可随时删，会自动重拉）
+  market_cache/   yfinance 行情当日缓存 + events_<日>.json 事件缓存（可随时删）
   signals.db      信号台账（SQLite，永久留存，见「信号打分」）
-scripts/      register_task.ps1（一键注册 Windows 计划任务）
-trade_notes/  分析与工具设计文档（含 MVP-v0-实施记录.md，讲自动化+数据源）
+event_calendar.json  用户维护的宏观事件日期表（FOMC 等，每年更新；events.py 读取）
+scripts/      register_task.ps1（15min 脉搏推送）+ register_maintenance_tasks.ps1（每日回测 + 每周复盘）
+trade_notes/  分析与工具设计文档（含 MVP-v0-实施记录.md，讲自动化+数据源）；reviews/ 存周期复盘
 .env          你的 API key + Webhook（已 gitignore；从 .env.example 复制）
 ```
 
@@ -234,6 +241,30 @@ python src/digest.py discord-202607261830.enriched.txt --debug
 > 信号的 STE 模板在 [src/signal_format.py](src/signal_format.py)。
 > 重点发言人名单在 [prompts/vip_speakers.txt](prompts/vip_speakers.txt)（一行一个，随时加）。
 
+### 历史区间 pulse（回看过去任意一段时间）
+
+自动推送只看"最近 N 分钟"。想**回看过去某一段历史**（比如"最近 3 天群里在聊什么"、
+"8/13 那天发生了什么"），用 `pulse.py` 的区间模式——它会自动收集那段时间覆盖到的
+所有频道 enriched 文件、切片、出一段脉搏简报：
+
+```powershell
+# 相对：最近 3 天 / 6 小时 / 90 分钟（90m / 6h / 3d）
+.\.venv\Scripts\python.exe src\pulse.py --last 3d
+
+# 绝对 UTC 区间（YYYYMMDD 或 YYYYMMDDHHMM；--to 省略=到现在）
+.\.venv\Scripts\python.exe src\pulse.py --from 20260813 --to 20260814
+
+# 只看喂进去的窗口、不调 AI
+.\.venv\Scripts\python.exe src\pulse.py --last 3d --no-api
+
+# 把历史简报推送到 Discord
+.\.venv\Scripts\python.exe src\pulse.py --from 20260813 --to 20260814 --post
+```
+
+> **为什么触发方式是命令行**：我们只有**出站** Discord Webhook，没有能读你消息的入站 bot，
+> 所以没法"在 Discord 里打命令触发"。历史 pulse 就是按需在命令行跑（也可绑热键 / 计划任务）。
+> 区间跨度大时会自动放大输出上限，避免简报被截断。
+
 ### 排查「推送暂停了一段时间」
 
 推送靠两条腿：**① 油猴脚本每 15 分钟导出文件**、**② 计划任务每 15 分钟消费**。
@@ -297,24 +328,34 @@ python src/signals.py --watchlist SOXL --event-today
 |---|---|
 | `--all` | 连个股/期货一起打分（默认只跑重点 ETP/ETF） |
 | `--limit N` | 最多打分多少个标的（默认 12） |
-| `--event-today` | 当天有大宏观事件，环境不 clear |
+| `--event-today` | 手动强制标为大宏观日（`events.py` 已自动判断，这是覆盖） |
 | `--no-save` | 只看不写库（调试用） |
 
 ### 怎么读信号卡
 
 ```
-── SPY (etf · 标普500) ──  🟡黄灯  档位:B
-   现价 758.02  建议入场 755.58  建议止损 732.91
-   • 关键位突破(量不足)[B] 收758.02 上破20日高755.58，量0.7773×
-   checklist: 1_环境clear=✓  2_A档信号=✗  3_入场点位明确=✓  4_止损位明确=✓
-   ema9=745.01 ema21=744.41 sma50=744.60 vwap=754.93 vol_ratio=0.78
+── NVDA (stock · 英伟达) ──  🟡黄灯  档位:A
+   现价 225.16  建议入场 227.23  建议止损 220.41  目标 240.87
+   • 接近关键位[watch] 距20日高227.23 0.92%
+   • 财报 beat[A] actual 1.87 vs est 1.79（+4.3%）
+   ⚠ 新鲜度: earnings_consumed（延伸 None%，None 天前突破，聊天 199 分钟前）
+   checklist: 1_环境clear=✓  2_A档信号=✓  3_入场点位明确=✓  4_止损位明确=✓
+   ema9=219.3 ema21=213.3 sma50=206.5 vwap=225.5 vol_ratio=0.61 ext=None dsb=None flags=earnings_consumed
 ```
 
 - **灯**：🟢绿=有 A 档信号 + 环境 clear + 有止损（可重点看）；🔴红=无信号或全 C 档（跳过）；🟡黄=其余（需人工判断）。
 - **档位**：`A`（高置信）> `B`（需确认）> `watch`（临近）> `—`（无）。
-- **checklist 前 4 条**：环境是否 clear、是否有 A 档信号、入场点位是否明确、止损位是否明确——四项越全越可动手。
-- **建议入场/止损**：目前只在"关键位突破"时给（入场=20 日高，止损=入场×0.97）；其它信号留空，需你自己定。
-- **最后一行**：ema9/21、sma50、VWAP、量比（vol_ratio<1 缩量、>1 放量），供你核对。
+- **建议入场/止损/目标**：目前只在"关键位突破"时给（入场=20 日高，止损=入场×0.97，目标≈2R）；其它信号留空，需你自己定。
+- **⚠ 新鲜度（priced-in 检查）**：信号是否"已经走远/可能被市场消化"——
+  - `extended` 现价已越过入场位太多（追高，阈值按杠杆放大）；
+  - `stale_breakout` 突破发生在 ≥2 个交易日前（旧突破）；
+  - `earnings_consumed` 财报催化已过 3 天；
+  - `stale_chat` 聊天里已很久没人再提。
+  **命中任一 → 🟢 自动降 🟡**，并在推送里写清原因，提醒你"别当天追高"。
+- **环境不 clear 时**会写明原因（今日宏观事件 / 2 天内有财报）。
+- **最后一行**：均线、VWAP、量比 + `ext`（延伸%）`dsb`（突破几天前）`flags`（命中的过期标签），供核对。
+
+阈值都在 [`config.py`](src/config.py) 顶部（`EXTENSION_PCT_MAX` / `BREAKOUT_STALE_DAYS` / `STALE_CHAT_MINUTES` / `EARNINGS_STALE_DAYS`），可自行调。
 
 ### v0 只做 3 类信号
 
@@ -326,11 +367,34 @@ python src/signals.py --watchlist SOXL --event-today
 
 另有 `reclaim 50 日线`（B 档）作为辅助。
 
+### 期权数据确认（B 档，只提示不给方向）
+
+信号卡还会拉**期权链**（yfinance 免费，`options.py`）做一层**确认/风险提示**——
+期权只当 **B 档**用：告诉你"哪里有支撑/阻力、定价是否拥挤"，**不给方向**
+（免费数据拿不到主买/主卖，"巨量大单"只能标"方向未知"，绝不当触发器）。
+
+信号卡里会多出一段（STE 英语），例如：
+
+```
+  Options: IV is 25%. P/C OI is 0.85. Support (put wall) is near 190.00. Resistance (call wall) is near 230.00.
+  Unusual option volume at 227.50 call (73756 lots). This is new. The direction is not sure.
+  Note: a big call wall is just above the entry. The breakout may stop there.
+```
+
+- **IV / call wall / put wall / P/C 比**：ATM 隐含波动率、期权最大未平仓量所在的阻力/支撑位、看跌看涨比。
+- **异常成交（unusual）**：`成交量 > 未平仓 且量大`的行权价 = 今天有新仓位进场（方向未知）——最接近 Frank"巨量 sell put 大单"的免费代理。
+- **`capped` 降级**：突破入场位**紧贴上方 call wall**（默认 1.5% 内）= 上方有"盖子"，**🟢 保守降 🟡**。
+- **IV 过高**（默认 ≥60%，注意 3x ETP 天然偏高）→ 提示"期权贵、可能已 price in"。
+
+> 数据源说明：Polygon 免费档期权是 403（未授权）、Finnhub/FMP 期权是付费，所以**统一走 yfinance**。
+> 期权阈值在 [`config.py`](src/config.py)（`OPTIONS_ENABLED` / `IV_HIGH` / `CALL_WALL_CAP_PCT`）。
+> 单独自测：`python src\options.py NVDA`。
+
 ### 数据怎么存
 
 - **`data/signals.db`（SQLite，永久）**——核心"信号→结果"台账。表：`runs`（每次运行）、
-  `mentions`（当天被点名的票+次数+原文样本）、`signals`（每张信号卡）、`outcomes`（预留，回填 T+1/3/5 实际涨跌做复盘）。这是要长期沉淀、值得备份的东西。
-- **`data/market_cache/`（每日 CSV，可丢弃）**——yfinance 行情缓存，已 gitignore，删了自动重拉。
+  `mentions`（当天被点名的票+次数+原文样本）、`signals`（每张信号卡）、`outcomes`（T+1/3/5 实际涨跌，由 `backtest.py` 自动回填做复盘）。这是要长期沉淀、值得备份的东西。
+- **`data/market_cache/`（每日缓存，可丢弃）**——yfinance 行情 CSV + 期权指标 JSON + 事件 JSON，已 gitignore，删了自动重拉。
 
 快速查看已存的信号：
 
@@ -342,8 +406,56 @@ python -c "import sqlite3;c=sqlite3.connect('data/signals.db');[print(r) for r i
 
 1. **行情拉的是"今天"的实时数据**，不是聊天那天——所以请**当天盘中/盘后跑**；拿历史聊天回测会时间错位。
 2. **利空不跌是纯价格代理**（没接新闻），只当 B 档参考、"需多日确认"，别当天 all in。
-3. **宏观环境目前靠手动 `--event-today`**，还没接 FOMC/CPI 日历。
-4. **期权大单方向**（sell put 是主买主卖）需付费源，尚未接入——期权信息只当 B 档确认。
+3. **期权大单方向**（sell put 是主买主卖）需付费源，尚未接入——期权信息只当 B 档确认。
+
+---
+
+## 数据闭环：宏观事件 + 回测 + 周期复盘
+
+第三阶段把"信号"接成"信号→环境→结果→复盘"的闭环。
+
+### 1. 宏观事件自动判断（`events.py`）
+
+不用再手动 `--event-today`——`cycle.py` / `signals.py` 每轮会自动查今天是不是大宏观日：
+
+- **FRED 发布日期**（CPI/非农/PPI/PCE/GDP/零售，用 `FRED_API_KEY`）；
+- **静态 FOMC 表** [`event_calendar.json`](event_calendar.json)（用户维护，每年更新一次）；
+- **Finnhub/FMP 经济日历**（有免费额度就用，做交叉校验；受限就静默跳过）。
+
+命中 → 该轮所有信号环境标不 clear，推送头部提示 `Macro today: … Trade small.`
+
+```bash
+python src/events.py                 # 看今天命中哪些事件
+python src/events.py --date 2026-01-28
+```
+
+### 2. 结果回填 + 胜率回测（`backtest.py`）
+
+把历史信号按 T+1/3/5 交易日的实际走势填进 `outcomes`，统计各信号/档位/灯色的真实命中率，
+并给出**调参建议**（人工确认后再改，勿据小样本激进调整）：
+
+```bash
+python src/backtest.py --backfill --report
+```
+
+### 3. 周期复盘（`review.py`）
+
+每周把最近 N 天聊天 + 胜率统计交给 Claude(sonnet)，产出一份中文复盘：
+**有价值的发言人、成功赚钱的方法、信号引擎校准建议、VIP 名单增删建议**。
+完整报告写 `trade_notes/reviews/<日期>-review.md`，TL;DR 摘要推送 Discord，
+VIP 建议写 `prompts/vip_suggestions.md`（人工确认后再改 `prompts/vip_speakers.txt`）。
+
+```bash
+python src/review.py --days 7            # 出报告 + 推送
+python src/review.py --no-api            # 离线看喂进去的内容
+```
+
+### 4. 挂计划任务
+
+```bash
+# 每日回填 outcomes + 每周复盘
+powershell -ExecutionPolicy Bypass -File scripts\register_maintenance_tasks.ps1
+```
 
 ---
 

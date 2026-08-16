@@ -96,3 +96,37 @@ def add_signal(conn: sqlite3.Connection, run_id: int, card: dict) -> int:
     )
     conn.commit()
     return int(cur.lastrowid)
+
+
+# ───────────────────────── outcomes 回填 / 回测查询 ─────────────────────────
+
+def add_outcome(conn: sqlite3.Connection, signal_id: int, horizon: str,
+                price: float | None, ret_pct: float | None) -> None:
+    conn.execute(
+        """INSERT OR REPLACE INTO outcomes (signal_id, horizon, price, ret_pct, filled_ts)
+           VALUES (?,?,?,?,?)""",
+        (signal_id, horizon, price, ret_pct, _now()),
+    )
+    conn.commit()
+
+
+def existing_outcomes(conn: sqlite3.Connection) -> set:
+    """已回填过的 (signal_id, horizon) 组合，避免重复计算。"""
+    return set(conn.execute("SELECT signal_id, horizon FROM outcomes").fetchall())
+
+
+def all_signals(conn: sqlite3.Connection) -> list:
+    """回测要用的历史信号快照。"""
+    return conn.execute(
+        "SELECT id, ts, ticker, price, entry, tier, light, signals FROM signals "
+        "WHERE price IS NOT NULL ORDER BY id"
+    ).fetchall()
+
+
+def outcome_rows(conn: sqlite3.Connection) -> list:
+    """信号 × 结果 连表，供胜率统计。"""
+    return conn.execute(
+        """SELECT s.ticker, s.tier, s.light, s.signals, o.horizon, o.ret_pct
+           FROM outcomes o JOIN signals s ON s.id = o.signal_id
+           WHERE o.ret_pct IS NOT NULL"""
+    ).fetchall()

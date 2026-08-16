@@ -16,12 +16,14 @@
 
 import argparse
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import config  # noqa: F401  (load .env)
 import extract
 import levels as L
 import market
+import options
 import store
 import tickers as T
 
@@ -82,6 +84,75 @@ def detect_holddown(daily, lev: int = 1) -> dict | None:
     return None
 
 
+# ────────────────────────── 新鲜度 / priced-in ──────────────────────────
+
+# 触发"降级"的过期/验证标签（🟢→🟡）；stale_chat 也算，因为用户主诉就是"很久没人再提"
+_STALE_FLAGS = {"extended", "stale_breakout", "earnings_consumed", "stale_chat", "capped"}
+
+
+def _days_since(date_str: str | None, now: datetime) -> int | None:
+    """把 'YYYY-MM-DD' 之类的日期算成距 now 多少天；解析失败返回 None。"""
+    if not date_str:
+        return None
+    for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"):
+        try:
+            d = datetime.strptime(str(date_str)[:10], fmt).replace(tzinfo=timezone.utc)
+            return (now - d).days
+        except ValueError:
+            continue
+    return None
+
+
+def staleness(lv: dict, entry, last, earnings, now: datetime,
+              last_mention_ts, lev: int) -> dict:
+    """算"是否已延伸/已消化/聊天不热"的一组指标 + 触发的标签。"""
+    flags: list[str] = []
+    ext_thr = config.EXTENSION_PCT_MAX * max(1, lev)  # 杠杆越高，正常波动越大
+    extension = (last / entry - 1) * 100 if (entry and last and last > entry) else None
+    if extension is not None and extension > ext_thr:
+        flags.append("extended")
+
+    dsb = lv.get("days_since_breakout")
+    if dsb is not None and dsb >= config.BREAKOUT_STALE_DAYS:
+        flags.append("stale_breakout")
+
+    dse = _days_since(earnings.get("period") if earnings else None, now)
+    if dse is not None and dse > config.EARNINGS_STALE_DAYS:
+        flags.append("earnings_consumed")
+
+    mention_age = None
+    if last_mention_ts is not None:
+        mention_age = (now - last_mention_ts).total_seconds() / 60
+        if mention_age > config.STALE_CHAT_MINUTES:
+            flags.append("stale_chat")
+
+    return {
+        "extension_pct": round(extension, 2) if extension is not None else None,
+        "days_since_breakout": dsb,
+        "move_since_breakout": lv.get("move_since_breakout"),
+        "days_since_earnings": dse,
+        "mention_age_min": round(mention_age) if mention_age is not None else None,
+        "flags": flags,
+    }
+
+
+def _mark_options_capped(stale: dict, entry, options_ctx: dict | None) -> None:
+    """call wall 紧贴突破位上方时，只做保守降级提示。"""
+    if not entry or not options_ctx:
+        return
+    wall = options_ctx.get("call_wall")
+    try:
+        gap = (float(wall) / float(entry) - 1) * 100
+    except (TypeError, ValueError, ZeroDivisionError):
+        return
+    if 0 < gap <= config.CALL_WALL_CAP_PCT:
+        flags = stale.setdefault("flags", [])
+        if "capped" not in flags:
+            flags.append("capped")
+        stale["call_wall_gap_pct"] = round(gap, 2)
+        stale["capped_call_wall"] = wall
+
+
 # ────────────────────────── checklist + 灯 ──────────────────────────
 
 def score(sigs: list[dict], env_clear: bool, entry, stop) -> tuple[dict, str, str]:
@@ -103,13 +174,24 @@ def score(sigs: list[dict], env_clear: bool, entry, stop) -> tuple[dict, str, st
     return checklist, light, tier
 
 
-def build_card(ticker: str, sym: str, lv: dict, sigs: list[dict], env_clear: bool) -> dict:
+def build_card(ticker: str, sym: str, lv: dict, sigs: list[dict], env_clear: bool,
+               *, earnings: dict | None = None, now: datetime | None = None,
+               last_mention_ts=None, env_reason: str = "", options_ctx: dict | None = None) -> dict:
+    now = now or datetime.now(timezone.utc)
     last, high20 = lv.get("last"), lv.get("high_20")
     has_break = any("关键位" in s["name"] for s in sigs)
     entry = high20 if (has_break and high20) else None
     stop = round(entry * 0.97, 2) if entry else None
     checklist, light, tier = score(sigs, env_clear, entry, stop)
+
     meta = T.UNIVERSE.get(ticker, {})
+    stale = staleness(lv, entry, last, earnings, now, last_mention_ts, meta.get("lev", 1))
+    _mark_options_capped(stale, entry, options_ctx)
+
+    # priced-in / 追高 → 🟢 降 🟡（已确认的行为）；红灯/黄灯不动
+    if light == "green" and (set(stale["flags"]) & _STALE_FLAGS):
+        light = "yellow"
+    target = round(entry + (entry - stop) * config.REWARD_R_MULTIPLE, 2) if (entry and stop) else None
     return {
         "ticker": ticker,
         "type": meta.get("type", "unknown"),
@@ -131,25 +213,49 @@ def build_card(ticker: str, sym: str, lv: dict, sigs: list[dict], env_clear: boo
             "chg_pct": lv.get("chg_pct"),
         },
         "env_clear": env_clear,
+        "env_reason": env_reason,
         "entry": entry,
         "stop": stop,
+        "target": target,
+        "options": options_ctx,
+        "freshness": stale,
         "checklist": checklist,
         "notes": f"ema9={lv.get('ema9')} ema21={lv.get('ema21')} sma50={lv.get('sma50')} "
-                 f"vwap={lv.get('vwap')} vol_ratio={lv.get('vol_ratio')}",
+                 f"vwap={lv.get('vwap')} vol_ratio={lv.get('vol_ratio')} "
+                 f"ext={stale['extension_pct']} dsb={stale['days_since_breakout']} "
+                 f"flags={','.join(stale['flags']) or '-'}",
     }
 
 
 _LIGHT = {"green": "🟢绿灯", "yellow": "🟡黄灯", "red": "🔴红灯"}
 
 
+def _pct(x) -> str:
+    try:
+        return f"{float(x) * 100:.0f}%"
+    except (TypeError, ValueError):
+        return "?"
+
+
 def print_card(c: dict) -> None:
     print(f"\n── {c['ticker']} ({c['type']} · {c['name']}) ──  {_LIGHT.get(c['light'], c['light'])}  档位:{c['tier']}")
-    print(f"   现价 {c['price']}  建议入场 {c['entry']}  建议止损 {c['stop']}")
+    print(f"   现价 {c['price']}  建议入场 {c['entry']}  建议止损 {c['stop']}  目标 {c.get('target')}")
     if c["signals"]:
         for s in c["signals"]:
             print(f"   • {s}")
     else:
         print("   • 无触发信号")
+    fr = c.get("freshness") or {}
+    if fr.get("flags"):
+        print(f"   ⚠ 新鲜度: {', '.join(fr['flags'])}"
+              f"（延伸 {fr.get('extension_pct')}%，{fr.get('days_since_breakout')} 天前突破，"
+              f"聊天 {fr.get('mention_age_min')} 分钟前）")
+    opt = c.get("options") or {}
+    if opt and any(opt.get(k) is not None for k in ("atm_iv", "pc_oi", "call_wall", "put_wall")):
+        print(f"   options: IV {_pct(opt.get('atm_iv'))}  support {opt.get('put_wall')}  "
+              f"resistance {opt.get('call_wall')}  P/C OI {opt.get('pc_oi')}  P/C vol {opt.get('pc_vol')}")
+    if not c.get("env_clear", True) and c.get("env_reason"):
+        print(f"   环境: 不clear（{c['env_reason']}）")
     ck = c["checklist"]
     print("   checklist: " + "  ".join(f"{k}={'✓' if v else '✗'}" for k, v in ck.items()))
     print(f"   {c['notes']}")
@@ -180,25 +286,39 @@ def resolve_from_text(text: str, all_: bool = False) -> tuple[list[str], list[di
 
 # ────────────────────────── 打分（可复用） ──────────────────────────
 
-def score_symbol(sym: str, event_today: bool = False) -> dict | None:
+def score_symbol(sym: str, event_today: bool = False, *, now: datetime | None = None,
+                 last_mention_ts=None, event_names: list[str] | None = None) -> dict | None:
     """给单个标的拉数据、算位、打分，返回信号卡；拿不到行情返回 None。"""
+    now = now or datetime.now(timezone.utc)
     daily = market.get_daily(sym)
     if daily is None or daily.empty:
         return None
     intraday = market.get_intraday(sym)
     lv = L.compute_levels(daily, intraday)
+    options_ctx = None
+    if config.OPTIONS_ENABLED:
+        try:
+            options_ctx = options.option_metrics(sym, spot=lv.get("last"))
+        except Exception:
+            options_ctx = None
 
     meta = T.UNIVERSE.get(sym, {})
     earnings = market.get_last_earnings(sym) if meta.get("type") == "stock" else None
     env_clear = not event_today
+    env_reason = ""
+    if event_today:
+        env_reason = ("macro event today: " + ", ".join(event_names)) if event_names else "big macro event today"
     if meta.get("type") == "stock" and market.upcoming_earnings_within(sym, 2):
         env_clear = False
+        env_reason = "earnings in 2 days or less"
 
     sigs = detect(lv, earnings)
     hd = detect_holddown(daily, meta.get("lev", 1))
     if hd:
         sigs.append(hd)
-    return build_card(sym, sym, lv, sigs, env_clear)
+    return build_card(sym, sym, lv, sigs, env_clear, earnings=earnings, now=now,
+                      last_mention_ts=last_mention_ts, env_reason=env_reason,
+                      options_ctx=options_ctx)
 
 
 def analyze(
@@ -208,12 +328,17 @@ def analyze(
     save: bool = True,
     source_label: str = "",
     mentions: list[dict] | None = None,
+    now: datetime | None = None,
+    mention_times: dict | None = None,
+    event_names: list[str] | None = None,
 ) -> tuple[list[dict], int | None]:
     """给一组标的打分，返回 (cards, run_id)。cards 里拿不到行情的标 no_data。
 
     cycle.py / signals CLI 共用这一条。save=True 时同时写入 signals.db。
+    mention_times: {ticker: 最后提及 UTC 时间}，用于标注"聊天已不热"。
     """
     mentions = mentions or []
+    mention_times = mention_times or {}
     conn = store.connect() if save else None
     run_id = store.new_run(conn, source_label) if conn else None
     if conn:
@@ -222,7 +347,9 @@ def analyze(
 
     cards: list[dict] = []
     for sym in syms:
-        card = score_symbol(sym, event_today)
+        card = score_symbol(sym, event_today, now=now,
+                            last_mention_ts=mention_times.get(sym),
+                            event_names=event_names)
         if card is None:
             cards.append({"ticker": sym, "no_data": True})
             continue
@@ -242,7 +369,8 @@ def main() -> None:
     ap.add_argument("source", nargs="?", type=Path, help="merged.enriched.txt（抽标的用）")
     ap.add_argument("--watchlist", help="逗号分隔，直接指定标的，绕过抽取")
     ap.add_argument("--all", action="store_true", help="连非重点(个股/期货)一起打分")
-    ap.add_argument("--event-today", action="store_true", help="FOMC/大数据当天：环境标为不clear")
+    ap.add_argument("--event-today", action="store_true",
+                    help="强制标为大宏观日（events.py 已自动判断，这是手动覆盖）")
     ap.add_argument("--limit", type=int, default=12, help="最多打分多少个标的")
     ap.add_argument("--no-save", action="store_true", help="不写入 signals.db")
     args = ap.parse_args()
@@ -271,12 +399,19 @@ def main() -> None:
         print("没有可打分的标的。")
         return
 
+    import events
+    ev_names = events.event_names()
+    event_today = args.event_today or bool(ev_names)
+    if ev_names:
+        print("今日宏观事件：", ", ".join(ev_names), "→ 环境不 clear")
+
     cards, run_id = analyze(
         syms,
-        event_today=args.event_today,
+        event_today=event_today,
         save=not args.no_save,
         source_label=source_label,
         mentions=mentions,
+        event_names=ev_names,
     )
     for card in cards:
         if card.get("no_data"):

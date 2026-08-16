@@ -29,7 +29,13 @@ If one of these persons speaks in this window, tell what the person says. Tell t
 - 3 to 7 bullets. Each bullet tells one topic that the group discusses now.
 - For each topic, tell the tickers, the direction (bullish or bearish), and who says it.
 - Tell the main reason or proof for each side. Keep numbers, prices, dates, and ticker codes.
+- Give each topic a catalyst grade: (A) real business catalyst (earnings, order, contract), (B) technical level or money flow (breakout, VWAP, gamma, big option print), or (C) only macro talk or an opinion with no proof.
 - If people disagree, tell both sides.
+
+**Priced-in check**
+- 0 to 3 bullets. For a topic that talks about a price move or news, tell if the market maybe knows this news already.
+- Say "second-order" if the news is out but the price does not move as people expect (sell the news).
+- Say "needs more days" for a "bad news but price holds" idea. One day is not proof.
 
 **Heavyweight speakers**
 - One bullet for each heavyweight speaker who speaks in this window.
@@ -37,10 +43,11 @@ If one of these persons speaks in this window, tell what the person says. Tell t
 - If no heavyweight speaker speaks, write "No heavyweight speaker speaks in this window."
 
 **Tickers named**
-- A list of the tickers or events in this window. Add "(bull)", "(bear)", or "(mixed)" after each one.
+- A list of the tickers or events in this window. Add "(bull)", "(bear)", or "(mixed)" after each one. Add the catalyst grade "[A]", "[B]", or "[C]".
 
 **Watch**
 - 0 to 4 bullets. Tell claims that have no proof, or points that need more data.
+- Mark a claim "unverified" if a person only tells a direction or a profit but gives no proof and no trade record.
 
 Give good detail, but stay clear and short in each sentence. Do not repeat the same point.
 

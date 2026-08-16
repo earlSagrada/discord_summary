@@ -244,4 +244,76 @@ Discord 标签页(开着) ──粘贴JS+开自动导出──▶ 每15min 下�
 
 ---
 
+## Part E · 第三阶段：数据闭环 + pulse 深化 —— 2026-08-16
+
+**目标**：把信号从"一个裸价位"升级成"带上下文 + 新鲜度 + 风险刻度"，并接成
+"信号→环境→结果→复盘"的闭环；再加一个周期复盘程序沉淀"谁值得听、什么方法赚钱"。
+
+**这轮新增/改动**
+
+| 文件 | 职责 |
+|---|---|
+| `src/levels.py` | 新增 `breakout_age()`：现价站上 20 日高的突破是几天前发生的 + 从突破日至今涨幅 |
+| `src/extract.py` | 抽出 `_line_hits()` 复用；新增 `last_mention_times()`（按时间块记录每票最后被提及时间）|
+| `src/signals.py` | 新增 `staleness()` 新鲜度/priced-in 指标；🟢 命中过期标签自动降 🟡；卡片带 `target/env_reason/freshness`；`analyze/score_symbol` 接 `now/mention_times/event_names` |
+| `src/signal_format.py` | 信号卡语义化：Entry/Stop 写明含义、风险%、2R 目标、现价 vs 入场关系、priced-in 告警、环境不 clear 原因 |
+| `prompts/pulse_summary.md` | 增加催化 A/B/C 分级、priced-in 检查段、未证实 KOL 噪音标注 |
+| `src/events.py`（新） | 宏观事件日历：FRED 发布日期 + 静态 FOMC 表 + Finnhub/FMP → `is_event_today()`；`cycle/signals` 自动置 env_clear |
+| `event_calendar.json`（新） | 用户维护的 FOMC/自定义大事件日期表 |
+| `src/store.py` | 新增 `add_outcome/existing_outcomes/all_signals/outcome_rows` |
+| `src/backtest.py`（新） | 回填 `outcomes`(T+1/3/5) + 胜率统计（按信号名/档位/灯色）+ 调参建议（报告级，人工确认）|
+| `src/review.py`（新） | 周期复盘：最近 N 天聊天 + 胜率 → sonnet 出中文报告；写 `trade_notes/reviews/`，TL;DR 推 Discord，VIP 建议写 `prompts/vip_suggestions.md` |
+| `prompts/weekly_review.md`（新） | 周期复盘 prompt |
+| `scripts/register_maintenance_tasks.ps1`（新） | 每日回测 + 每周复盘 两个计划任务 |
+| `src/config.py` | 新增新鲜度/回测阈值常量（`EXTENSION_PCT_MAX` 等）+ `EVENT_CALENDAR` 路径 |
+
+**冒烟测试（已过）**
+- `events.py --date 2026-01-28` → 命中 FOMC；普通日返回空。
+- `backtest.py --backfill --report` → 对既有 `signals.db` 回填 399 条 outcome，胜率统计合理
+  （财报 beat T+1 100%、关键位突破确认 T+1 93%、关键位突破量不足 13% ← 印证"量不足要降级"）。
+- `signals.py --watchlist NVDA` → 旧财报 beat 触发 `earnings_consumed`，🟢 正确降 🟡。
+- `cycle.py --once --dry-run --no-watch --anchor last --date 20260813` → 脉搏简报含催化分级/priced-in，
+  信号卡语义化 + 新鲜度告警，事件模块正常。
+- `review.py --no-api` → prompt 拼装（含聊天 + 胜率统计）正常。
+
+**已知点 / 后续**
+- FOMC 静态表是按公开日程填的，请每年核对更新；FRED release 名称/ID 匹配是 best-effort。
+- Finnhub/FMP 经济日历免费额度常受限（403），当前作为可选交叉校验，静默降级。
+- 回测早期样本小，命中率仅供参考；调参一律"先建议、后人工确认"，不自动改权重。
+
+---
+
 *本文只覆盖 MVP v0 的数据入库与数据源盘点。信号/打分引擎见 [盯盘工具设计](盯盘工具设计.md) §2–§4，方法论见 [交易信号复盘与方法总结](交易信号复盘与方法总结.md)。*
+
+---
+
+## Part G · 历史区间 pulse + 期权数据融入信号验证 —— 2026-08-16
+
+**目标**：(1) 能回看过去任意时段出 pulse；(2) 把期权数据融入信号验证。
+
+**数据源调研（重要）**
+- 期权：**yfinance `option_chain` 是唯一可靠免费源**（strike/bid/ask/volume/OI/IV 齐全）。
+  **Polygon 免费档期权 403 未授权**；Finnhub/FMP 期权付费。→ 全部走 yfinance。
+- 免费数据**拿不到成交方向**（主买/主卖）→ 期权只当 **B 档确认/上下文**，绝不当触发器。
+
+**这轮新增/改动**
+
+| 文件 | 职责 |
+|---|---|
+| `src/pulse.py` | 新增 `combine_range()` / `gather_range_texts()` + CLI `--last`（90m/6h/3d）/`--from`/`--to`/`--post`；跨度大自动放大输出上限。历史 pulse 触发是 **CLI**（只有出站 webhook、无入站 bot）|
+| `src/options.py`（新） | yfinance 期权链 → `option_metrics()`：ATM IV、IV skew、P/C(OI+量)、call wall(阻力)/put wall(支撑)、异常量 strike（方向未知）；per-day JSON 缓存；任何失败都返回 None 不抛错 |
+| `src/signals.py` | `score_symbol` 拉期权指标传入 `build_card`；新增 `_mark_options_capped`：突破入场紧贴上方 call wall → tag `capped` + 🟢 降 🟡（并入既有 `_STALE_FLAGS` 降级）；`print_card` 加一行期权 |
+| `src/signal_format.py` | 信号卡渲染期权确认块（STE 英语）：IV / P·C / 支撑阻力 / 异常量（方向未知）/ capped 提示 / IV 过高提示 |
+| `src/config.py` | 新增 `OPTIONS_ENABLED` / `IV_HIGH=0.60` / `CALL_WALL_CAP_PCT=1.5` |
+
+**冒烟测试（已过）**
+- `options.py NVDA/SOXL/7709.HK` → 个股/3x ETP 指标合理（SOXL IV 116% 天然高、P/C 2.4）；HK 无期权优雅返回 None。
+- `signals.py --watchlist NVDA,SOXL,QQQ` → 卡片含期权行，NVDA/QQQ 入场紧贴 call wall 触发 `capped`。
+- `format_cards([score_symbol("NVDA")])` → STE 期权块完整（IV/墙/异常量/capped）。
+- `pulse.py --from 20260813 --to 20260814 --no-api`（1078 条）/`--last 3d`（1806 条）/参数守卫均正常；真实 API 出中文 STE 简报。
+- `cycle.py --dry-run` 全链路（含期权）跑通。
+
+**已知点**
+- 免费期权无成交方向，"巨量大单"只能标"方向未知"；3x ETP 的 IV 天然偏高（IV_HIGH 只做提示）。
+- 期权只减分/提示，从不加分（不会把 🟡 抬成 🟢），对齐方法论"期权只做 B 档确认"。
+- 历史 pulse 触发是命令行，可绑热键/计划任务；无法在 Discord 里打命令触发（缺入站 bot）。
