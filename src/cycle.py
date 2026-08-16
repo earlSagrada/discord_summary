@@ -46,28 +46,42 @@ def log(msg: str) -> None:
 LOW_ACTIVITY_MAX = 8
 # 停摆恢复后，追补摘要最多回看这么久（分钟）——对齐油猴脚本 maxBackfillHours=12
 MAX_CATCHUP_MIN = 12 * 60
+# 最新消息超过这么久没更新 → 判定导出停摆，往 Discord 发一次告警（每次停摆只发一次）
+STALL_ALERT_MIN = 90
+
+
+def load_state() -> dict:
+    """读状态：last_post_ts（上次成功推送 UTC）+ stall_alerted（本次停摆是否已告警）。"""
+    if not STATE_FILE.exists():
+        return {}
+    try:
+        return json.loads(STATE_FILE.read_text(encoding="utf-8")) or {}
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def save_state(state: dict) -> None:
+    try:
+        STATE_FILE.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        pass
 
 
 def load_last_post() -> datetime | None:
     """读上次成功推送的 UTC 时间（= 输出频道里我们最后一条消息的时间）。"""
-    if not STATE_FILE.exists():
-        return None
+    ts = load_state().get("last_post_ts")
     try:
-        raw = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-        ts = raw.get("last_post_ts")
         return datetime.fromisoformat(ts) if ts else None
-    except (json.JSONDecodeError, OSError, ValueError):
+    except (TypeError, ValueError):
         return None
 
 
 def save_last_post(ts: datetime) -> None:
-    try:
-        STATE_FILE.write_text(
-            json.dumps({"last_post_ts": ts.isoformat()}, ensure_ascii=False),
-            encoding="utf-8",
-        )
-    except OSError:
-        pass
+    """记录成功推送时间，并清掉停摆告警标志（数据恢复了）。"""
+    state = load_state()
+    state["last_post_ts"] = ts.isoformat()
+    state["stall_alerted"] = False
+    save_state(state)
 
 
 def today_str(now: datetime) -> str:
@@ -99,6 +113,51 @@ def enriched_paths_for_window(now: datetime, win_min: float, forced_date: str | 
     return paths
 
 
+def newest_message_time(now: datetime) -> datetime | None:
+    """扫今天+昨天的 enriched，找出最新一条消息的时间（用于停摆告警，不受窗口限制）。"""
+    paths = []
+    for d in (now, now - timedelta(days=1)):
+        paths.extend(enriched_paths(d.strftime("%Y%m%d")))
+    stamps = []
+    for p in paths:
+        try:
+            t = pulse.last_ts(p.read_text(encoding="utf-8"))
+            if t:
+                stamps.append(t)
+        except OSError:
+            pass
+    return max(stamps) if stamps else None
+
+
+def maybe_alert_stall(now: datetime, newest: datetime | None, args) -> None:
+    """导出停摆时，往 Discord 发一次告警（每次停摆只发一次，恢复后自动清标志）。"""
+    if args.dry_run or args.always or args.anchor != "now":
+        return
+    age_min = (now - newest).total_seconds() / 60 if newest else None
+    if age_min is not None and age_min <= STALL_ALERT_MIN:
+        return  # 数据还新鲜，无需告警
+    state = load_state()
+    if state.get("stall_alerted"):
+        return  # 本次停摆已经告警过，不刷屏
+
+    if newest:
+        detail = f"The last message is from {newest.strftime('%Y-%m-%d %H:%M UTC')} ({age_min:.0f} min ago)."
+    else:
+        detail = "No recent messages are available."
+    alert = ("⚠️ **Exporter looks stalled.** " + detail + "\n"
+             "No new chat is coming in. Please check the Discord tab "
+             "(it may be closed, discarded, or the PC was asleep) and make sure "
+             "the userscript's timed export is ON.")
+    try:
+        import discord_post
+        discord_post.send(alert)
+        log("已发送停摆告警到 Discord")
+    except Exception as e:  # 告警失败不影响主流程
+        log(f"停摆告警发送失败：{type(e).__name__}: {e}")
+    state["stall_alerted"] = True
+    save_state(state)
+
+
 def run_once(args) -> int:
     now = datetime.now(timezone.utc)
     log(f"=== run start (UTC {now.strftime('%Y-%m-%d %H:%M:%S')}) ===")
@@ -109,6 +168,10 @@ def run_once(args) -> int:
         done = watch_inbox.load_state()
         n = watch_inbox.scan_once(done)
         log(f"watcher 处理了 {n} 个新导出")
+
+    # 1b) 停摆检测：最新消息太旧就往 Discord 发一次告警（让你知道该去重启标签页）
+    newest = newest_message_time(now)
+    maybe_alert_stall(now, newest, args)
 
     # 2) 决定窗口：正常 = args.minutes；若距上次推送有缺口 -> 追补窗口（上限 12h）
     win_min = float(args.minutes)
