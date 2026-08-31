@@ -30,7 +30,8 @@ import tickers as T
 
 # ────────────────────────── 信号检测 ──────────────────────────
 
-def detect(lv: dict, earnings: dict | None) -> list[dict]:
+def detect(lv: dict, earnings: dict | None, now: datetime | None = None) -> list[dict]:
+    now = now or datetime.now(timezone.utc)
     out: list[dict] = []
     last, high20, vr = lv.get("last"), lv.get("high_20"), lv.get("vol_ratio")
 
@@ -53,10 +54,19 @@ def detect(lv: dict, earnings: dict | None) -> list[dict]:
     if earnings and earnings.get("surprisePercent") is not None:
         sp = earnings["surprisePercent"]
         detail = f"actual {earnings.get('actual')} vs est {earnings.get('estimate')}"
+        # Finnhub 给的是"最近一季"财报，往往已过去几十天 → 过期的 beat 不再算 A 档催化，
+        # 降为 C 档上下文（否则每只个股都常驻 A 档，绿灯失去意义）。
+        dse = _earnings_age(earnings, now)
+        stale_er = dse is not None and dse > config.EARNINGS_STALE_DAYS
+        age = f"，{dse}天前" if dse is not None else ""
         if sp > 0:
-            out.append({"name": "财报 beat", "tier": "A", "note": f"{detail}（+{round(sp, 1)}%）"})
+            if stale_er:
+                out.append({"name": "财报 beat[已消化]", "tier": "C",
+                            "note": f"{detail}（+{round(sp, 1)}%）{age}，已过 {config.EARNINGS_STALE_DAYS} 天，仅作背景"})
+            else:
+                out.append({"name": "财报 beat", "tier": "A", "note": f"{detail}（+{round(sp, 1)}%）{age}"})
         elif sp < 0:
-            out.append({"name": "财报 miss", "tier": "C", "note": f"{detail}（{round(sp, 1)}%）"})
+            out.append({"name": "财报 miss", "tier": "C", "note": f"{detail}（{round(sp, 1)}%）{age}"})
 
     return out
 
@@ -86,8 +96,10 @@ def detect_holddown(daily, lev: int = 1) -> dict | None:
 
 # ────────────────────────── 新鲜度 / priced-in ──────────────────────────
 
-# 触发"降级"的过期/验证标签（🟢→🟡）；stale_chat 也算，因为用户主诉就是"很久没人再提"
-_STALE_FLAGS = {"extended", "stale_breakout", "earnings_consumed", "stale_chat", "capped"}
+# 触发"降级"的过期/验证标签（🟢→🟡）；stale_chat 也算，因为用户主诉就是"很久没人再提"。
+# 注意：earnings_consumed 不在此列——过期财报已在 detect() 里直接降为 C 档（不再给 A 档资格），
+# 若再用它降级整张卡，会把"新鲜突破 + 旧财报"的票也误杀（曾导致绿灯灭绝）。
+_STALE_FLAGS = {"extended", "stale_breakout", "stale_chat", "capped"}
 
 
 def _days_since(date_str: str | None, now: datetime) -> int | None:
@@ -103,6 +115,17 @@ def _days_since(date_str: str | None, now: datetime) -> int | None:
     return None
 
 
+def _earnings_age(earnings: dict | None, now: datetime) -> int | None:
+    """财报催化距今多少天。优先用**发布日**，退回财季结束日（period）。
+
+    period 是财季结束日、可能还是未来日期，直接拿它当"消息年龄"会算错，
+    所以 market.get_last_earnings 会带一个 report_date。
+    """
+    if not earnings:
+        return None
+    return _days_since(earnings.get("report_date") or earnings.get("period"), now)
+
+
 def staleness(lv: dict, entry, last, earnings, now: datetime,
               last_mention_ts, lev: int) -> dict:
     """算"是否已延伸/已消化/聊天不热"的一组指标 + 触发的标签。"""
@@ -116,7 +139,7 @@ def staleness(lv: dict, entry, last, earnings, now: datetime,
     if dsb is not None and dsb >= config.BREAKOUT_STALE_DAYS:
         flags.append("stale_breakout")
 
-    dse = _days_since(earnings.get("period") if earnings else None, now)
+    dse = _earnings_age(earnings, now)
     if dse is not None and dse > config.EARNINGS_STALE_DAYS:
         flags.append("earnings_consumed")
 
@@ -307,12 +330,12 @@ def score_symbol(sym: str, event_today: bool = False, *, now: datetime | None = 
     env_clear = not event_today
     env_reason = ""
     if event_today:
-        env_reason = ("macro event today: " + ", ".join(event_names)) if event_names else "big macro event today"
+        env_reason = ("今天有" + "、".join(event_names)) if event_names else "今天有大宏观事件"
     if meta.get("type") == "stock" and market.upcoming_earnings_within(sym, 2):
         env_clear = False
-        env_reason = "earnings in 2 days or less"
+        env_reason = "2 天内有财报"
 
-    sigs = detect(lv, earnings)
+    sigs = detect(lv, earnings, now)
     hd = detect_holddown(daily, meta.get("lev", 1))
     if hd:
         sigs.append(hd)

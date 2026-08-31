@@ -55,6 +55,17 @@ CREATE TABLE IF NOT EXISTS outcomes (
     PRIMARY KEY (signal_id, horizon),
     FOREIGN KEY (signal_id) REFERENCES signals(id)
 );
+CREATE TABLE IF NOT EXISTS pulse_rounds (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts      TEXT NOT NULL,
+    day     TEXT NOT NULL,
+    n_msg   INTEGER,
+    tickers TEXT,
+    thread  TEXT,
+    brief   TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_signals_ts ON signals(ts);
+CREATE INDEX IF NOT EXISTS idx_rounds_day ON pulse_rounds(day);
 """
 
 
@@ -124,9 +135,70 @@ def all_signals(conn: sqlite3.Connection) -> list:
 
 
 def outcome_rows(conn: sqlite3.Connection) -> list:
-    """信号 × 结果 连表，供胜率统计。"""
+    """信号 × 结果 连表，供胜率统计。
+
+    多返回一个 signal 的日期（YYYY-MM-DD），让回测能按「票×天」去重——
+    cycle 每 15 分钟给同一只票记一条，不去重会把同一个信号重复计 96 次，
+    统计出来的"样本数/胜率"是假的。
+    """
     return conn.execute(
-        """SELECT s.ticker, s.tier, s.light, s.signals, o.horizon, o.ret_pct
+        """SELECT s.ticker, s.tier, s.light, s.signals, o.horizon, o.ret_pct,
+                  substr(s.ts, 1, 10) AS day
            FROM outcomes o JOIN signals s ON s.id = o.signal_id
            WHERE o.ret_pct IS NOT NULL"""
     ).fetchall()
+
+
+# ───────────────────────── 推送记忆（做「变化」用） ─────────────────────────
+
+def add_pulse_round(conn: sqlite3.Connection, *, day: str, n_msg: int,
+                    tickers: list[str], thread: str, brief: str) -> int:
+    """记下这一轮实际推给用户的内容，下一轮据此只讲**新增和变化**。"""
+    cur = conn.execute(
+        "INSERT INTO pulse_rounds (ts, day, n_msg, tickers, thread, brief) VALUES (?,?,?,?,?,?)",
+        (_now(), day, n_msg, json.dumps(tickers, ensure_ascii=False), thread, brief),
+    )
+    conn.commit()
+    return int(cur.lastrowid)
+
+
+def recent_rounds(conn: sqlite3.Connection, day: str, limit: int = 3) -> list[dict]:
+    """今天最近 limit 轮推送（时间正序），用于喂给 AI 当「已经说过的话」。"""
+    rows = conn.execute(
+        "SELECT ts, n_msg, tickers, thread, brief FROM pulse_rounds "
+        "WHERE day = ? ORDER BY id DESC LIMIT ?", (day, limit)
+    ).fetchall()
+    out = []
+    for ts, n_msg, tickers, thread, brief in reversed(rows):
+        try:
+            tk = json.loads(tickers or "[]")
+        except (TypeError, ValueError):
+            tk = []
+        out.append({"ts": ts, "n_msg": n_msg, "tickers": tk,
+                    "thread": thread or "", "brief": brief or ""})
+    return out
+
+
+def day_signal_history(conn: sqlite3.Connection, day: str) -> list[tuple]:
+    """今天已经记过的所有信号快照（时间正序），用来对比灯色/价格的变化。"""
+    return conn.execute(
+        "SELECT ticker, ts, light, tier, price, signals FROM signals "
+        "WHERE substr(ts, 1, 10) = ? ORDER BY id", (day,)
+    ).fetchall()
+
+
+def day_mention_counts(conn: sqlite3.Connection, day: str) -> dict[str, int]:
+    """上一轮记录的提及次数（ticker → count）。
+
+    cycle 每轮都对**当天全文**抽标的，所以 mentions.count 是当天累计值；
+    用「本轮累计 − 上轮累计」就得到这一轮里新增了多少次讨论 —— 升温/降温的依据。
+    """
+    row = conn.execute(
+        "SELECT id FROM runs WHERE substr(ts, 1, 10) = ? ORDER BY id DESC LIMIT 1", (day,)
+    ).fetchone()
+    if not row:
+        return {}
+    rows = conn.execute(
+        "SELECT ticker, count FROM mentions WHERE run_id = ?", (row[0],)
+    ).fetchall()
+    return {t: int(c or 0) for t, c in rows}

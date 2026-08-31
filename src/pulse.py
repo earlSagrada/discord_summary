@@ -150,31 +150,120 @@ def load_vips() -> list[str]:
 
 # ───────────────────────── AI 简报 ─────────────────────────
 
+_SECTION_EMOJI = ("🆕", "📈", "🧊", "🧭", "⚠️", "🔥", "⭐", "📋", "🔄", "📊")
+
+
+def tighten(text: str) -> str:
+    """把 AI 输出压紧，保证推送格式一致（不靠模型自觉）：
+
+    - `# 标题` / `## 标题` → `**标题**`（Discord 里 # 会渲染成超大字号）
+    - 段落标题（以 🆕 📈 🧭 等开头、又不是 bullet 的行）自动加粗——
+      模型时灵时不灵，加粗与否随机，靠它自觉会导致每条消息长得不一样
+    - 删掉所有空行（用户明确要求标题、bullet 前不留空行）
+    - 去掉行尾空白
+    """
+    out = []
+    for raw in text.splitlines():
+        line = raw.rstrip()
+        if not line.strip():
+            continue  # 空行一律去掉
+        stripped = line.lstrip()
+        if stripped.startswith("#"):
+            body = stripped.lstrip("#").strip()
+            if body:
+                # 已经自带 ** 的就不重复加
+                line = body if body.startswith("**") else f"**{body}**"
+        elif (stripped.startswith(_SECTION_EMOJI)
+              and not stripped.startswith("- ")
+              and "**" not in stripped):
+            line = f"**{stripped}**"
+        out.append(line)
+    return "\n".join(out)
+
+
+_THREAD_HDR = "今日主线"
+
+
+def extract_thread(brief: str) -> str:
+    """从简报里抠出「🧭 今日主线」那一行，存进 pulse_rounds 供下一轮延续判断。"""
+    lines = brief.splitlines()
+    for i, line in enumerate(lines):
+        if _THREAD_HDR not in line:
+            continue
+        for nxt in lines[i + 1:]:
+            raw = nxt.strip()
+            if not raw:
+                continue
+            if raw.startswith("**"):
+                return ""  # 直接撞上下一个标题，说明这段是空的
+            return raw.lstrip("-").strip().strip("*`").strip()[:60]
+        break
+    return ""
+
+
+_PB_BEGIN = "<!-- BEGIN AUTO -->"
+_PB_END = "<!-- END AUTO -->"
+PB_BEGIN, PB_END = _PB_BEGIN, _PB_END  # 供 selfreview 读写 playbook 用
+
+
+def playbook_items(text: str) -> list[str]:
+    """只取 AUTO 标记之间的条目——文件头部的使用说明里也有 bullet，不能混进来。"""
+    if _PB_BEGIN in text and _PB_END in text:
+        text = text.split(_PB_BEGIN, 1)[1].split(_PB_END, 1)[0]
+    return [ln.strip() for ln in text.splitlines()
+            if ln.strip().startswith("- ") and len(ln.strip()) > 4]
+
+
+def load_playbook(limit: int = 8) -> str:
+    """读 prompts/playbook.md 里的方法论条目（由 selfreview.py 维护）。
+
+    这是自我改进闭环的最后一环：复盘学到的推理套路，下一轮 pulse 就照着用。
+    """
+    path = prompts.PROMPTS_DIR / "playbook.md"
+    if not path.exists():
+        return "（还没有积累方法论，按常识分析即可。）"
+    items = playbook_items(path.read_text(encoding="utf-8"))[:limit]
+    return "\n".join(items) if items else "（还没有积累方法论，按常识分析即可。）"
+
+
 def summarize(
     window_text: str,
     model: str = DEFAULT_MODEL,
     max_tokens: int = MAX_TOKENS,
     vips: list[str] | None = None,
+    prior_briefs: str = "",
+    thread: str = "",
+    playbook: str | None = None,
 ) -> str:
-    """把窗口文本交给 Claude 生成 STE 英语脉搏简报。空输入返回空串。"""
+    """把窗口文本交给 Claude 生成中文脉搏简报。空输入返回空串。
+
+    prior_briefs / thread 是"今天已经推给用户的内容"，用来让模型只讲增量；
+    playbook 是复盘沉淀下来的分析方法，用来让每轮分析比上一轮更像样。
+    """
     if not window_text.strip():
         return ""
     if not os.environ.get("ANTHROPIC_API_KEY"):
         raise RuntimeError("需要设置 ANTHROPIC_API_KEY 才能生成简报")
 
     vips = vips if vips is not None else load_vips()
-    vip_names = "\n".join(f"- {v}" for v in vips) if vips else "- (none set yet)"
+    vip_names = "\n".join(f"- {v}" for v in vips) if vips else "- （还没设置）"
 
     from anthropic import Anthropic
     client = Anthropic()
-    prompt = prompts.load("pulse_summary.md").format(content=window_text, vip_names=vip_names)
+    prompt = prompts.load("pulse_summary.md").format(
+        content=window_text,
+        vip_names=vip_names,
+        prior_briefs=prior_briefs or "（今天还没推送过，这是第一条，可以正常完整介绍。）",
+        thread=thread or "（今天还没确立主线，请你判断一条。）",
+        playbook=playbook if playbook is not None else load_playbook(),
+    )
     resp = client.messages.create(
         model=model,
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],
     )
     parts = [getattr(b, "text", "") for b in getattr(resp, "content", []) or []]
-    return "\n".join(p for p in parts if p).strip()
+    return tighten("\n".join(p for p in parts if p).strip())
 
 
 # ───────────────────────── CLI（自测用） ─────────────────────────
@@ -239,8 +328,8 @@ def signal_block(window_text: str, now: datetime | None = None, limit: int = 20)
         now=now, mention_times=mention_times, event_names=ev_names,
     )
     body = signal_format.format_cards(cards, now)
-    note = "_Note: the signals and options use today's market data, not the data of the past days._"
-    return f"{note}\n\n{body}"
+    note = "_注：信号和期权用的是**当前**行情数据，不是历史那天的。_"
+    return f"{note}\n{body}"
 
 
 def main() -> None:
@@ -309,11 +398,11 @@ def main() -> None:
         print("[抽标的、打分（含期权）…]", file=sys.stderr)
         sig_text = signal_block(window, now=end)
 
-    body = brief if not sig_text else f"{brief}\n\n{sig_text}"
+    body = brief if not sig_text else f"{brief}\n{sig_text}"
     if args.post and range_mode:
         import discord_post
-        header = f"📜 **Historical pulse — {_fmt_utc(start)} → {_fmt_utc(end)} UTC**"
-        sent = discord_post.send(f"{header}\n\n{body}")
+        header = f"📜 **历史脉搏** · {_fmt_utc(start)} → {_fmt_utc(end)} UTC"
+        sent = discord_post.send(f"{header}\n{body}")
         print(f"[已推送 {sent} 条到 Discord]", file=sys.stderr)
         return
     print(body)

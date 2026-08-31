@@ -23,6 +23,7 @@ import traceback
 from datetime import datetime, timedelta, timezone
 
 import config
+import delta
 import events
 import pulse
 import signal_format
@@ -78,10 +79,11 @@ def load_last_post() -> datetime | None:
 
 
 def save_last_post(ts: datetime) -> None:
-    """记录成功推送时间，并清掉停摆告警标志（数据恢复了）。"""
+    """记录成功推送时间，并清掉停摆/失败告警标志（数据恢复了）。"""
     state = load_state()
     state["last_post_ts"] = ts.isoformat()
     state["stall_alerted"] = False
+    state.pop("fail_alerted", None)
     save_state(state)
 
 
@@ -142,13 +144,12 @@ def maybe_alert_stall(now: datetime, newest: datetime | None, args) -> None:
         return  # 本次停摆已经告警过，不刷屏
 
     if newest:
-        detail = f"The last message is from {newest.strftime('%Y-%m-%d %H:%M UTC')} ({age_min:.0f} min ago)."
+        detail = f"最后一条消息是 {newest.strftime('%m-%d %H:%M UTC')}（{age_min:.0f} 分钟前）。"
     else:
-        detail = "No recent messages are available."
-    alert = ("⚠️ **Exporter looks stalled.** " + detail + "\n"
-             "No new chat is coming in. Please check the Discord tab "
-             "(it may be closed, discarded, or the PC was asleep) and make sure "
-             "the userscript's timed export is ON.")
+        detail = "没有可用的近期消息。"
+    alert = ("⚠️ **导出好像停了。** " + detail + "\n"
+             "没有新聊天进来。请检查那个 Discord 标签页（可能被关了、被浏览器丢弃了、"
+             "或者电脑睡眠了），并确认油猴脚本的「定时导出」是开着的。")
     try:
         import discord_post
         discord_post.send(alert)
@@ -157,6 +158,65 @@ def maybe_alert_stall(now: datetime, newest: datetime | None, args) -> None:
         log(f"停摆告警发送失败：{type(e).__name__}: {e}")
     state["stall_alerted"] = True
     save_state(state)
+
+
+def maybe_alert_failure(exc: Exception, args) -> None:
+    """本轮异常失败时往 Discord 发一次告警（同一类错误只发一次，避免刷屏）。
+
+    没有这个的话，像 API key 失效这种错误会**静默**失败几十轮都没人知道
+    （只写进 cycle.log），推送就那么"消失"了。
+    """
+    if args.dry_run:
+        return
+    kind = type(exc).__name__
+    state = load_state()
+    if state.get("fail_alerted") == kind:
+        return  # 同类错误已告警过
+
+    msg = str(exc)[:300]
+    hint = ""
+    if "authentication" in msg.lower() or "401" in msg:
+        hint = "\n看起来是 ANTHROPIC_API_KEY 失效或过期了，请重新生成一个填进 .env。"
+    elif "webhook" in msg.lower() or "404" in msg:
+        hint = "\nDiscord webhook 地址可能错了或被删了，请检查 .env。"
+    alert = (f"🛑 **脉搏推送这轮失败了。**（{kind}）\n```{msg}```"
+             f"{hint}\n在你修好之前不会再有新推送。详情见 data/cycle.log。")
+    try:
+        import discord_post
+        discord_post.send(alert)
+        log(f"已发送失败告警到 Discord（{kind}）")
+        state["fail_alerted"] = kind
+        save_state(state)
+    except Exception as e:  # 告警本身失败就只记日志
+        log(f"失败告警发送失败：{type(e).__name__}: {e}")
+
+
+def maybe_trigger_substack() -> None:
+    """发现新的 Substack 复盘就**后台**跑一次系统校准。
+
+    为什么用子进程而不是直接调用：那条流水线要跑周期复盘 + opus 优化，
+    几分钟起步。15 分钟的脉搏推送绝不能为它等着。
+    检测本身只是列目录 + 读一个小 JSON，每轮的开销可以忽略。
+    """
+    try:
+        import substack
+        fresh = substack.new_posts()
+        if not fresh:
+            return
+        import subprocess
+        script = config.SRC_DIR / "substack_pipeline.py"
+        creation = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | \
+            getattr(subprocess, "DETACHED_PROCESS", 0)
+        subprocess.Popen(
+            [sys.executable, str(script)],
+            cwd=str(config.PROJECT_ROOT),
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            creationflags=creation,
+        )
+        log(f"发现新 Substack 复盘（{'、'.join(p.stem for p in fresh)}）"
+            f"→ 已在后台启动系统校准，详情见 data/pipeline.log")
+    except Exception as e:  # 触发失败绝不能影响本轮推送
+        log(f"Substack 校准触发失败（{type(e).__name__}: {e}），下轮再试")
 
 
 def run_once(args) -> int:
@@ -173,6 +233,10 @@ def run_once(args) -> int:
     # 1b) 停摆检测：最新消息太旧就往 Discord 发一次告警（让你知道该去重启标签页）
     newest = newest_message_time(now)
     maybe_alert_stall(now, newest, args)
+
+    # 1c) 新的 Substack 复盘落地了？→ 后台重新校准系统（不阻塞本轮推送）
+    if not (args.dry_run or args.no_save):
+        maybe_trigger_substack()
 
     # 2) 决定窗口：正常 = args.minutes；若距上次推送有缺口 -> 追补窗口（上限 12h）
     win_min = float(args.minutes)
@@ -217,10 +281,25 @@ def run_once(args) -> int:
 
     low_activity = (not catchup) and 0 < n_msg <= LOW_ACTIVITY_MAX
 
-    # 4) 脉搏简报（STE 英语）；追补模式给更大的输出上限
+    # 3b) 先取"本轮写库前"的今日状态：今天已经推过什么、每只票之前什么样。
+    #     必须在 S.analyze(save=True) 之前拿，否则本轮自己的记录会污染基准。
+    try:
+        prior = delta.snapshot(now)
+    except Exception as e:
+        log(f"变化快照不可用（{type(e).__name__}: {e}），本轮按首轮处理")
+        prior = {"day": today_str(now), "history": {}, "mentions": {}, "rounds": []}
+    prior_briefs = delta.prior_context(prior)
+    thread = delta.thread_hint(prior)
+    if prior.get("rounds"):
+        log(f"今天已推送 {len(prior['rounds'])} 轮，主线：{thread or '（未确立）'}"
+            f" → 本轮只讲增量")
+
+    # 4) 脉搏简报（中文，带"今天已经说过什么"的记忆）；追补模式给更大的输出上限
     brief = pulse.summarize(
         window, model=args.model,
         max_tokens=4000 if catchup else pulse.MAX_TOKENS,
+        prior_briefs=prior_briefs,
+        thread=thread,
     ) if n_msg else ""
 
     # 5) 信号：从当天全部讨论抽标的，重新打分（默认连个股一起，信号更多）
@@ -252,23 +331,37 @@ def run_once(args) -> int:
         )
     ste_signals = signal_format.format_cards(cards, anchor)
 
-    # 6) 组装消息
-    stamp = anchor.strftime("%Y-%m-%d %H:%M UTC")
+    # 5c) 确定性的「变化」块：灯色/新票/热度/价格进展，都是算出来的，不让模型猜
+    try:
+        change = delta.compute(prior, cards, mentions)
+        change_block = delta.render(change)
+    except Exception as e:
+        log(f"变化计算失败（{type(e).__name__}: {e}），本轮不带变化块")
+        change, change_block = {}, ""
+    if change_block:
+        log(f"变化：新票 {len(change.get('new', []))}、灯色变动 "
+            f"{len(change.get('lights', []))}、升温 {len(change.get('heat', []))}")
+
+    # 6) 组装消息（中文；各块之间只换行、不留空行 —— 用户要求更紧凑）
+    stamp = anchor.strftime("%m-%d %H:%M UTC")
     if catchup:
         hrs = win_min / 60
-        header = (f"📣 **Catch-up — you missed the last {hrs:.1f} hours** ({stamp})\n"
-                  f"_The export paused for a while. This message covers the whole gap._")
+        header = (f"📣 **补发：你错过了过去 {hrs:.1f} 小时** · {stamp}\n"
+                  f"_导出中断了一段时间，这条覆盖整个空档。_")
     else:
-        header = f"🕒 **Trading pulse — {stamp}**"
+        round_no = change.get("round_no", 1)
+        header = f"🕒 **交易脉搏** · {stamp}" + (f" · 今日第 {round_no} 条" if round_no > 1 else "")
         if low_activity:
-            header += f"\n_Low activity: only {n_msg} new messages in the last {args.minutes} minutes._"
+            header += f"\n_群里比较冷清：最近 {args.minutes} 分钟只有 {n_msg} 条新消息。_"
     if ev_names:
-        header += f"\n_Macro today: {', '.join(ev_names)}. The market is not clear. Trade small._"
+        header += f"\n⚠️ _今天有 {'、'.join(ev_names)}，环境不明朗，仓位放小。_"
     body_parts = [header]
+    if change_block:
+        body_parts.append(change_block)
     if brief:
         body_parts.append(brief)
     body_parts.append(ste_signals)
-    message = "\n\n".join(body_parts).strip()
+    message = "\n".join(body_parts).strip()
 
     if args.dry_run:
         log("结果：dry-run（不推送），以下是将要发送的内容\n")
@@ -281,7 +374,28 @@ def run_once(args) -> int:
     sent = discord_post.send(message)
     save_last_post(now)
     log(f"结果：已推送 {sent} 条到 Discord{'（追补）' if catchup else ''}")
+    remember_round(now, n_msg, cards, brief, thread, args)
     return 0
+
+
+def remember_round(now, n_msg, cards, brief, prev_thread, args) -> None:
+    """把这轮推出去的内容记下来，下一轮才知道"哪些话已经说过了"。"""
+    if args.no_save:
+        return
+    try:
+        import store
+        conn = store.connect()
+        try:
+            store.add_pulse_round(
+                conn, day=today_str(now), n_msg=n_msg,
+                tickers=[c["ticker"] for c in cards],
+                thread=pulse.extract_thread(brief) or prev_thread,
+                brief=brief,
+            )
+        finally:
+            conn.close()
+    except Exception as e:  # 记忆写失败不该影响推送本身
+        log(f"推送记忆写入失败（{type(e).__name__}: {e}）")
 
 
 def main() -> None:
@@ -310,6 +424,7 @@ def main() -> None:
     except Exception as e:
         log(f"结果：本轮失败 {type(e).__name__}: {e}")
         log("traceback: " + traceback.format_exc().replace("\n", " | "))
+        maybe_alert_failure(e, args)
         sys.exit(1)
 
 

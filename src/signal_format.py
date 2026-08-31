@@ -1,98 +1,34 @@
-"""把 signals.analyze() 产出的信号卡渲染成 ASD-STE100 简化技术英语文本。
+"""把 signals.analyze() 产出的信号卡渲染成**中文推送文本**。
 
-信号是本地确定性算出来的，所以这里用**静态模板**把中文信号名翻成 STE 英语，
-不调 AI（免费、稳定、可控）。cycle.py 把这段拼到脉搏简报后面一起推送到 Discord。
+设计目标（按用户反馈）：
+- **中文、说人话**："存在 priced-in 风险"而不是"Priced-in risk."
+- **句子连贯**：用「——」「，」把因果串起来，最后落到一句结论（该不该追）。
+- **短、可扫读**：数字压在一行用「｜」分隔，一张卡通常 3~6 行。
+- **不留空行**：标题前、bullet 前都不空行（Discord 里更紧凑）。
 
-规则遵循 STE 精神：短句、主动语态、现在时、常用词、专有名词/代码保持原样。
+信号是本地确定性算出来的，所以这里用静态模板，不调 AI（免费、稳定、可控）。
 """
 
 from datetime import datetime, timezone
 
-# 灯 -> STE 标签
-_LIGHT = {
-    "green": "🟢 Good setup",
-    "yellow": "🟡 Check it",
-    "red": "🔴 No signal",
-}
+import config
 
-# tier -> STE 词
-_TIER = {"A": "tier A", "B": "tier B", "watch": "watch", "—": "no tier"}
+_LIGHT = {"green": "🟢", "yellow": "🟡", "red": "🔴"}
+_TIER = {"A": "A档", "B": "B档", "watch": "观察", "—": "无档"}
 
 
-def _num(x) -> str:
-    """把数值格式化成短字符串；None -> '?'。"""
+def _num(x, nd: int = 2) -> str:
+    """数值 → 短字符串；None → '?'。"""
     if x is None:
         return "?"
     try:
-        return f"{float(x):.2f}"
+        return f"{float(x):.{nd}f}"
     except (TypeError, ValueError):
         return str(x)
 
 
-def _signal_line(sig: dict, metrics: dict) -> str:
-    """单条信号 -> 一句 STE 英语。按信号名走静态模板。"""
-    name = sig.get("name", "")
-    high20 = _num(metrics.get("high_20"))
-    vr = _num(metrics.get("vol_ratio"))
-    sma50 = _num(metrics.get("sma50"))
-
-    if name == "关键位突破确认":
-        return f"Breakout, confirmed. The price is above the 20-day high {high20}. The volume is {vr} times the usual volume."
-    if name == "关键位突破(量不足)":
-        return f"Breakout, but the volume is low. The price is above the 20-day high {high20}. The volume is {vr} times the usual volume."
-    if name == "接近关键位":
-        return f"The price is near the 20-day high {high20}."
-    if name == "reclaim 50日线":
-        return f"The price moves back above the 50-day average {sma50}."
-    if name == "财报 beat":
-        return "The company reports earnings that are better than the estimate."
-    if name == "财报 miss":
-        return "The company reports earnings that are worse than the estimate."
-    if name.startswith("利空不跌"):
-        return "There is bad news, but the price holds. The price does not make a new low. This needs more days to confirm."
-    # 未知信号名的兜底（正常不会走到）
-    return f"Signal: {name}."
-
-
-_FLAG_TEXT = {
-    "extended": "The price is already {extension_pct}% above the entry.",
-    "stale_breakout": "The breakout is {days_since_breakout} days old.",
-    "earnings_consumed": "The earnings news is {days_since_earnings} days old.",
-    "stale_chat": "The group did not talk about it for {mention_age_min} minutes.",
-}
-
-
-def _price_vs_entry(price, entry) -> str:
-    """现价与入场位的关系，一句 STE。"""
-    if price is None or entry in (None, 0):
-        return ""
-    gap = (price / entry - 1) * 100
-    if gap >= 0:
-        near = "You are still near the trigger." if gap <= 0.5 else "You are late. Wait for a pullback."
-        return f"The price is {gap:.1f}% above the entry. {near}"
-    return f"The price is {-gap:.1f}% below the entry. The signal is not triggered yet."
-
-
-def _freshness_line(card: dict) -> str | None:
-    """把过期标签拼成一句"这信号可能已被 price in"的告警。"""
-    fr = card.get("freshness") or {}
-    flags = fr.get("flags") or []
-    if not flags:
-        return None
-    parts = []
-    for f in flags:
-        tmpl = _FLAG_TEXT.get(f)
-        if tmpl:
-            try:
-                parts.append(tmpl.format(**fr))
-            except (KeyError, ValueError):
-                pass
-    if not parts:
-        return None
-    return "  ⚠ Priced-in risk. " + " ".join(parts) + " Maybe the market already knows this."
-
-
 def _pct(x) -> str:
+    """0.25 → '25%'。"""
     if x is None:
         return "?"
     try:
@@ -101,88 +37,144 @@ def _pct(x) -> str:
         return str(x)
 
 
+# ───────────────────────── 触发原因 ─────────────────────────
+
+def _signal_line(sig: dict, metrics: dict) -> str:
+    """单条信号 → 一句中文。"""
+    name = sig.get("name", "")
+    high20 = _num(metrics.get("high_20"))
+    vr = _num(metrics.get("vol_ratio"), 1)
+    sma50 = _num(metrics.get("sma50"))
+
+    if name == "关键位突破确认":
+        return f"放量突破 20 日高 {high20}，量能 {vr} 倍（有量 = 有人真在买）"
+    if name == "关键位突破(量不足)":
+        return f"突破了 20 日高 {high20}，但量能只有 {vr} 倍——没量的突破常是假的"
+    if name == "接近关键位":
+        return f"逼近 20 日高 {high20}，还没突破（别提前进场）"
+    if name == "reclaim 50日线":
+        return f"收回 50 日线 {sma50} 上方"
+    if name == "财报 beat":
+        return "财报超预期，是新鲜催化"
+    if name.startswith("财报 beat[已消化]"):
+        return "财报虽超预期，但已是旧闻，只作背景参考"
+    if name == "财报 miss":
+        return "财报不及预期"
+    if name.startswith("利空不跌"):
+        return "利空后价格守住没创新低，疑似见底——但要多看几天才算数"
+    return name
+
+
+# ───────────────────────── priced-in 风险 ─────────────────────────
+
+def _freshness_line(card: dict) -> str | None:
+    """把过期标签串成一句连贯的「这信号可能已被市场消化」。"""
+    fr = card.get("freshness") or {}
+    flags = fr.get("flags") or []
+    reasons = []
+    if "extended" in flags and fr.get("extension_pct") is not None:
+        reasons.append(f"现价已比进场位高出 {fr['extension_pct']}%")
+    if "stale_breakout" in flags and fr.get("days_since_breakout") is not None:
+        reasons.append(f"突破是 {fr['days_since_breakout']} 天前的事了")
+    if "stale_chat" in flags and fr.get("mention_age_min") is not None:
+        mins = fr["mention_age_min"]
+        when = f"{mins // 60}小时" if mins >= 60 else f"{mins}分钟"
+        reasons.append(f"群里已经{when}没人再提")
+    if not reasons:
+        return None
+    return "⚠️ 存在 priced-in 风险：" + "，".join(reasons) + "——这波多半已被市场消化，现在追进去容易接盘"
+
+
+# ───────────────────────── 期权确认 ─────────────────────────
+
 def _has_options(opt: dict) -> bool:
-    keys = ("atm_iv", "iv_skew", "pc_oi", "pc_vol", "call_wall", "put_wall", "front_expiry")
-    return bool(opt) and (any(opt.get(k) is not None for k in keys) or bool(opt.get("unusual")))
+    return any(opt.get(k) is not None for k in ("atm_iv", "pc_oi", "call_wall", "put_wall"))
 
 
 def _options_lines(card: dict) -> list[str]:
-    """期权只输出确认/风险上下文，不输出方向判断。"""
     opt = card.get("options") or {}
     if not _has_options(opt):
         return []
 
     parts = []
-    if opt.get("atm_iv") is not None:
-        parts.append(f"IV is {_pct(opt.get('atm_iv'))}.")
-    if opt.get("pc_oi") is not None:
-        parts.append(f"P/C OI is {_num(opt.get('pc_oi'))}.")
+    iv = opt.get("atm_iv")
+    if iv is not None:
+        judge = "偏贵" if float(iv) >= config.IV_HIGH else "不算贵"
+        parts.append(f"IV {_pct(iv)}（{judge}）")
     if opt.get("put_wall") is not None:
-        parts.append(f"Support (put wall) is near {_num(opt.get('put_wall'))}.")
+        parts.append(f"下方 {_num(opt['put_wall'])} 有支撑")
     if opt.get("call_wall") is not None:
-        parts.append(f"Resistance (call wall) is near {_num(opt.get('call_wall'))}.")
-    lines = ["  Options: " + " ".join(parts)] if parts else []
+        parts.append(f"上方 {_num(opt['call_wall'])} 有阻力")
+    lines = ["期权：" + " ｜ ".join(parts)] if parts else []
 
-    try:
-        import config
-        high_iv = opt.get("atm_iv") is not None and float(opt.get("atm_iv")) >= config.IV_HIGH
-    except (ImportError, TypeError, ValueError):
-        high_iv = False
-    if high_iv:
-        lines.append("  IV is high (options are expensive). The market maybe expects a big move already.")
+    if iv is not None and float(iv) >= config.IV_HIGH:
+        lines.append("　IV 偏高说明期权本身很贵，市场已经在预期大波动（杠杆 ETP 天生如此，属正常）")
 
-    for u in (opt.get("unusual") or [])[:3]:
-        strike = _num(u.get("strike"))
-        side = u.get("side") or "option"
-        vol = u.get("volume")
-        lines.append(f"  Unusual option volume at {strike} {side} ({vol} lots). "
-                     "This is new. The direction is not sure.")
+    un = opt.get("unusual") or []
+    if un:
+        u = un[0]
+        side = "call" if u.get("side") == "call" else "put"
+        lines.append(f"　异常成交：{_num(u.get('strike'))} 的 {side} 今天有 {u.get('volume')} 张新仓位，"
+                     f"但免费数据看不出是买是卖，只能当线索")
 
-    flags = (card.get("freshness") or {}).get("flags") or []
-    if "capped" in flags:
-        lines.append("  Note: a big call wall is just above the entry. The breakout may stop there.")
+    fr = card.get("freshness") or {}
+    if "capped" in (fr.get("flags") or []):
+        lines.append(f"　⚠️ 上方 {_num(fr.get('capped_call_wall'))} 的期权墙紧贴进场位，突破可能就卡在那")
     return lines
 
 
-def _card_block(card: dict) -> str:
-    ticker = card["ticker"]
-    name = card.get("name") or ""
-    head = f"{_LIGHT.get(card['light'], card['light'])} — {ticker}"
-    if name:
-        head += f" ({name})"
-    head += f" · {_TIER.get(card.get('tier'), card.get('tier'))}"
+# ───────────────────────── 单卡 ─────────────────────────
 
+def _price_vs_entry(price, entry) -> str:
+    if price is None or entry in (None, 0):
+        return ""
+    gap = (price / entry - 1) * 100
+    if gap < 0:
+        return f"还差 {-gap:.1f}% 才触发"
+    if gap <= 0.5:
+        return "刚好在触发位附近"
+    return f"已高出 {gap:.1f}%，属于追高"
+
+
+def _card_block(card: dict) -> str:
+    name = card.get("name") or ""
+    head = f"{_LIGHT.get(card['light'], '')} **{card['ticker']}**"
+    if name:
+        head += f" {name}"
+    head += f" · {_TIER.get(card.get('tier'), card.get('tier'))}"
     lines = [head]
+
     price, entry, stop, target = card.get("price"), card.get("entry"), card.get("stop"), card.get("target")
     if entry is not None and stop is not None:
         risk = (entry - stop) / entry * 100 if entry else None
-        lines.append(f"  Entry {_num(entry)} = the 20-day high (the breakout level). "
-                     f"Stop {_num(stop)} = {_num(risk)}% below entry (your maximum risk).")
+        lines.append(f"现价 {_num(price)} ｜ 进场 {_num(entry)}（20日高）｜ "
+                     f"止损 {_num(stop)}（-{_num(risk, 1)}%）｜ 目标 {_num(target)}")
         rel = _price_vs_entry(price, entry)
-        lines.append(f"  Price {_num(price)}. {rel}".rstrip())
-        if target is not None:
-            lines.append(f"  Target near {_num(target)} (about 2 times the risk).")
+        if rel:
+            lines.append(f"　{rel}；止损是这笔最多亏多少，目标约为风险的 2 倍")
     else:
-        lines.append(f"  Price {_num(price)}. There is no clear entry level now.")
+        lines.append(f"现价 {_num(price)} ｜ 目前没有明确进场位（要自己定）")
+
+    metrics = card.get("metrics", {})
+    sigs = card.get("sig_objs", [])
+    if sigs:
+        lines.append("触发：" + "；".join(_signal_line(s, metrics) for s in sigs))
 
     fresh = _freshness_line(card)
     if fresh:
         lines.append(fresh)
-    if not card.get("env_clear", True):
-        reason = card.get("env_reason") or "the market condition is not clear today"
-        lines.append(f"  Note: do not trade big today. Reason: {reason}.")
     lines.extend(_options_lines(card))
 
-    metrics = card.get("metrics", {})
-    for sig in card.get("sig_objs", []):
-        lines.append("  - " + _signal_line(sig, metrics))
-    if not card.get("sig_objs"):
-        lines.append("  - No signal now.")
+    if not card.get("env_clear", True):
+        reason = card.get("env_reason") or "今天环境不明朗"
+        lines.append(f"⚠️ 今天别重仓：{reason}")
     return "\n".join(lines)
 
 
+# ───────────────────────── 整段 ─────────────────────────
+
 def format_cards(cards: list[dict], now: datetime | None = None) -> str:
-    """把信号卡列表渲染成一段 STE 英语。🟢🟡 详列，🔴/无数据只统计一句。"""
+    """信号卡列表 → 一段中文。🟢🟡 详列，🔴/无数据只用一句带过。"""
     now = now or datetime.now(timezone.utc)
     stamp = now.strftime("%H:%M UTC")
 
@@ -190,25 +182,15 @@ def format_cards(cards: list[dict], now: datetime | None = None) -> str:
     red = [c for c in cards if not c.get("no_data") and c.get("light") == "red"]
     no_data = [c for c in cards if c.get("no_data")]
 
-    out = [f"**Trade signals** (update at {stamp})"]
-
+    out = [f"**📊 交易信号** · {stamp}"]
     if detailed:
-        # 绿灯在前，黄灯在后
-        detailed.sort(key=lambda c: 0 if c["light"] == "green" else 1)
-        for c in detailed:
-            out.append("")
-            out.append(_card_block(c))
+        detailed.sort(key=lambda c: 0 if c["light"] == "green" else 1)  # 绿灯在前
+        out.extend(_card_block(c) for c in detailed)
     else:
-        out.append("")
-        out.append("No 🟢 or 🟡 signal now.")
+        out.append("目前没有 🟢 或 🟡 信号。")
 
     if red:
-        names = ", ".join(c["ticker"] for c in red)
-        word = "ticker has" if len(red) == 1 else "tickers have"
-        out.append("")
-        out.append(f"🔴 {len(red)} {word} no signal now: {names}.")
+        out.append(f"🔴 无信号（{len(red)}）：" + "、".join(c["ticker"] for c in red))
     if no_data:
-        names = ", ".join(c["ticker"] for c in no_data)
-        out.append(f"No market data for: {names}.")
-
+        out.append("拿不到行情：" + "、".join(c["ticker"] for c in no_data))
     return "\n".join(out)

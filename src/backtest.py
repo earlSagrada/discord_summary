@@ -89,6 +89,22 @@ def backfill() -> int:
     return filled
 
 
+def _dedupe(rows: list) -> list:
+    """按「票 × 日期 × 信号组合 × 持有期」去重。
+
+    cycle 每 15 分钟就给同一只票再记一条信号，同一天最多 96 条完全一样的记录。
+    不去重的话 n 是虚高的、胜率也不是独立样本，统计会严重误导。
+    """
+    seen, out = set(), []
+    for r in rows:
+        key = (r[0], r[6], r[3], r[4])  # ticker, day, signals, horizon
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(r)
+    return out
+
+
 def _stats(rows: list, key_fn) -> dict:
     """按 key 分组算 {n, win_rate, avg_ret}。win = ret>0。"""
     groups: dict = {}
@@ -118,12 +134,12 @@ def _print_group(title: str, groups: dict) -> None:
 def report_text() -> str:
     """给周报用的纯文本胜率摘要。"""
     conn = store.connect()
-    rows = store.outcome_rows(conn)  # (ticker,tier,light,signals,horizon,ret_pct)
+    rows = _dedupe(store.outcome_rows(conn))
     conn.close()
     if not rows:
         return "尚无 outcomes 样本（先积累几天信号再回填）。"
     by_sig = _stats(rows, lambda r: f"{_primary_signal_name(r[3])} · T+{r[4]}")
-    lines = ["信号胜率（按信号名 × 持有期）："]
+    lines = ["信号胜率（按信号名 × 持有期；已按票×天去重）："]
     for k in sorted(by_sig, key=lambda x: -by_sig[x]["n"]):
         g = by_sig[k]
         lines.append(f"  - {k}: n={g['n']}, 胜率 {g['win_rate']}%, 平均 {g['avg_ret']}%")
@@ -136,7 +152,7 @@ def suggestions_text(min_n: int = 15) -> str:
     只对样本量 ≥ min_n 的 (信号名×持有期) 发声，避免小样本误导。
     """
     conn = store.connect()
-    rows = store.outcome_rows(conn)
+    rows = _dedupe(store.outcome_rows(conn))
     conn.close()
     if not rows:
         return "样本不足，暂无调参建议。"
@@ -158,12 +174,13 @@ def suggestions_text(min_n: int = 15) -> str:
 
 def report() -> None:
     conn = store.connect()
-    rows = store.outcome_rows(conn)
+    raw = store.outcome_rows(conn)
     conn.close()
+    rows = _dedupe(raw)
     if not rows:
         print("尚无 outcomes 样本。先跑几天信号、再 --backfill。")
         return
-    print(f"回测样本：{len(rows)} 条 (signal × horizon)")
+    print(f"回测样本：{len(rows)} 条（按票×天去重；去重前 {len(raw)} 条）")
     _print_group("按信号名 × 持有期", _stats(rows, lambda r: f"{_primary_signal_name(r[3])} · T+{r[4]}"))
     _print_group("按灯色 × 持有期", _stats(rows, lambda r: f"{r[2]} · T+{r[4]}"))
     _print_group("按档位 × 持有期", _stats(rows, lambda r: f"tier {r[1]} · T+{r[4]}"))

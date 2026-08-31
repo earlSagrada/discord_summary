@@ -58,7 +58,12 @@ def get_intraday(sym: str, period: str = "5d", interval: str = "5m") -> pd.DataF
 
 
 def get_last_earnings(sym: str) -> dict | None:
-    """最近一季 actual vs estimate（beat/miss）。ETF 返回 None。"""
+    """最近一季 actual vs estimate（beat/miss）。ETF 返回 None。
+
+    注意：Finnhub `stock/earnings` 的 `period` 是**财季结束日**（可能还是未来日期），
+    不是**财报发布日**。判断"这条催化多新鲜"必须用发布日 → 这里补一个 `report_date`
+    （来自 earnings 日历），拿不到时才退回 period。
+    """
     key = os.environ.get("FINNHUB_API_KEY")
     if not key:
         return None
@@ -73,6 +78,7 @@ def get_last_earnings(sym: str) -> dict | None:
         e = data[0]  # 最新一季
         return {
             "period": e.get("period"),
+            "report_date": last_earnings_date(sym),
             "actual": e.get("actual"),
             "estimate": e.get("estimate"),
             "surprise": e.get("surprise"),
@@ -80,6 +86,28 @@ def get_last_earnings(sym: str) -> dict | None:
         }
     except requests.RequestException:
         return None
+
+
+def last_earnings_date(sym: str, lookback_days: int = 180) -> str | None:
+    """最近一次**已发布**财报的公布日期（YYYY-MM-DD）。拿不到返回 None。"""
+    key = os.environ.get("FINNHUB_API_KEY")
+    if not key:
+        return None
+    today = dt.date.today()
+    try:
+        r = requests.get(f"{FINNHUB}/calendar/earnings",
+                         params={"from": (today - dt.timedelta(days=lookback_days)).isoformat(),
+                                 "to": today.isoformat(),
+                                 "symbol": sym, "token": key}, timeout=15)
+        if not r.ok:
+            return None
+        payload = r.json()
+        cal = payload.get("earningsCalendar", []) if isinstance(payload, dict) else []
+    except (requests.RequestException, ValueError):
+        return None
+    dates = [c.get("date") for c in cal
+             if c.get("symbol") == sym and c.get("date") and c.get("epsActual") is not None]
+    return max(dates) if dates else None
 
 
 def upcoming_earnings_within(sym: str, days: int = 2) -> bool:
